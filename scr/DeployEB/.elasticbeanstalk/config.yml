@@ -8,7 +8,7 @@ deploy:
 global:
   application_name: zuumpay-api
   default_platform: Python 3.12
-  default_region: us-east-1
+  default_region: us-east-2
   include_gitid: yes
   instance_profile: null
   platform_name: null
