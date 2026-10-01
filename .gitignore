@@ -4,5 +4,7 @@ site
 src
 
 scr/DeployEB/app.zip
+scr/DeployEB/staticfiles/
+scr/DeployEB/media/
 __pycache__/
 *.py[cod]

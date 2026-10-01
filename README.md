@@ -56,6 +56,18 @@ python manage.py runserver
 
 A aplicação fica disponível em `http://127.0.0.1:8000/`; o health check retorna `{"status": "ok"}`. O Admin fica em `/admin/`. Crie um superusuário para entrar no Admin e testar a API. Guarde as credenciais localmente e nunca as publique no GitHub.
 
+### Verificar localmente
+
+Em outro terminal, com o ambiente virtual ativo e a partir de `scr/DeployEB`, valide a configuração e execute os testes automatizados:
+
+```powershell
+python manage.py check
+python manage.py makemigrations --check --dry-run
+python manage.py test pagamentos
+```
+
+O estado esperado é `System check identified no issues`, `No changes detected` e todos os testes aprovados. O endpoint `/admin/` redireciona visitantes não autenticados à página de login; isso é esperado. O endpoint de dados `/api/lojistas/` retorna HTTP 401 sem autenticação.
+
 ## Empacotar e publicar no AWS Elastic Beanstalk
 
 ### Pré-requisitos
@@ -87,6 +99,15 @@ eb status <nome-do-ambiente>
 O empacotador cria `app.zip`, conforme configurado no EB CLI. Ele inclui os arquivos ocultos `.ebextensions` necessários à configuração e às migrações e exclui o banco SQLite local, arquivos de mídia, ambientes virtuais e caches. As migrações e a coleta de arquivos estáticos são executadas durante o deploy.
 
 Se ainda não existir um ambiente, `eb create <nome-do-ambiente>` cria recursos AWS e pode gerar custos. Revise a configuração e os custos na conta antes de executar esse comando. Depois do deploy, copie o CNAME exibido por `eb status` para a seção **URL pública** acima e teste `http://<CNAME>/`. Use `https://` somente se TLS estiver configurado no ambiente.
+
+Depois de conectar-se à instância com `eb ssh <nome-do-ambiente>`, crie o superusuário dentro da instância:
+
+```bash
+cd /var/app/current
+python manage.py createsuperuser
+```
+
+Use o usuário criado para entrar em `http://<CNAME>/admin/`. Confirme os endpoints `/`, `/api/`, `/api/lojistas/` e `/api/transacoes/`; sem autenticação, as coleções devem responder HTTP 401. Adicione ao README o CNAME real somente depois de verificar que o ambiente está saudável.
 
 ### Observações sobre produção
 
