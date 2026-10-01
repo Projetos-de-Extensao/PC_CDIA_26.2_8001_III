@@ -61,7 +61,7 @@ A aplicação fica disponível em `http://127.0.0.1:8000/`; o health check retor
 
 - Uma conta AWS com permissões para Elastic Beanstalk e os recursos necessários ao ambiente.
 - AWS CLI e EB CLI instalados e configurados.
-- A configuração atual em `scr/DeployEB/.elasticbeanstalk/config.yml` seleciona o perfil `eb-cli`, a região `us-east-1`, a aplicação `catalogo-produtos` e a plataforma Python 3.12. Confirme esses valores e o ambiente Elastic Beanstalk antes de publicar; eles podem precisar ser ajustados para a conta AWS de destino.
+- A configuração atual em `scr/DeployEB/.elasticbeanstalk/config.yml` seleciona o perfil `eb-cli`, a região `us-east-1`, a aplicação `zuumpay-api` e a plataforma Python 3.12. Confirme esses valores e o ambiente Elastic Beanstalk antes de publicar; eles podem precisar ser ajustados para a conta AWS de destino.
 - Defina a variável `DJANGO_SECRET_KEY` nas propriedades de ambiente do Elastic Beanstalk. Gere uma chave nova e mantenha-a fora do repositório. Defina também `DJANGO_ALLOWED_HOSTS` com o CNAME do ambiente, por exemplo `meu-ambiente.us-east-1.elasticbeanstalk.com`. `DJANGO_DEBUG` já é configurado como `False` em `.ebextensions/django.config`.
 - Configure HTTPS no balanceador/proxy do ambiente antes de definir `DJANGO_SECURE_SSL=True`; isso ativa o redirecionamento HTTPS e cookies seguros. Defina `DJANGO_HSTS_SECONDS` somente após confirmar que todo o domínio será servido por HTTPS.
 
