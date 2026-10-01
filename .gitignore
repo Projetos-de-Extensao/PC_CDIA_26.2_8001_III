@@ -2,3 +2,7 @@
 site
 
 src
+
+scr/DeployEB/app.zip
+__pycache__/
+*.py[cod]

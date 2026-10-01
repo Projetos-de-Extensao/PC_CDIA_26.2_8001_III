@@ -18,6 +18,8 @@
 
 ## 1. INTRODUÇÃO
 
+> Os diagramas PlantUML permanecem como blocos de código-fonte nesta documentação; o build do site não envia o conteúdo dos diagramas a um serviço externo.
+
 ### 1.1. Propósito
 
 Este documento descreve os Casos de Uso Arquiteturais para a infraestrutura em nuvem AWS da plataforma **[NOME DO PROJETO]**. Os casos de uso arquiteturais focam em requisitos de infraestrutura, segurança, operações e governança, diferentemente dos casos de uso funcionais que descrevem interações de usuários finais com o sistema.

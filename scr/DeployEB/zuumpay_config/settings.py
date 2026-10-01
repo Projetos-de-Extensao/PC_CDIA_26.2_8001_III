@@ -1,17 +1,19 @@
 import os
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Configuração de DEBUG - True para desenvolvimento
-DEBUG = True if os.getenv('DJANGO_DEBUG', 'True') == 'True' else False
+DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in {'1', 'true', 'yes'}
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-jws812gs-!utj)3qyg+aurpf170cq7ex3@_44hz$cr2dac1heh'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            'Defina DJANGO_SECRET_KEY no ambiente antes de iniciar em produção.'
+        )
+    SECRET_KEY = 'django-insecure-local-development-only-key'
 
 # Configuração de arquivos de mídia
 if DEBUG:
@@ -97,10 +99,35 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-ALLOWED_HOSTS = os.getenv(
-    'DJANGO_ALLOWED_HOSTS',
-    'localhost,127.0.0.1,.elasticbeanstalk.com'
-).split(',')
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    if host.strip()
+]
+
+DJANGO_SECURE_SSL = os.getenv('DJANGO_SECURE_SSL', 'False').lower() in {
+    '1', 'true', 'yes'
+}
+SECURE_SSL_REDIRECT = DJANGO_SECURE_SSL
+SESSION_COOKIE_SECURE = DJANGO_SECURE_SSL
+CSRF_COOKIE_SECURE = DJANGO_SECURE_SSL
+SECURE_HSTS_SECONDS = int(os.getenv('DJANGO_HSTS_SECONDS', '0'))
+if DJANGO_SECURE_SSL:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+}
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'

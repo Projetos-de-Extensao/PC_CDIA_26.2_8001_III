@@ -1,7 +1,7 @@
 ---
-repo_url: https://github.com/jonh-carvalho/PC_ADS_26.2_8001
-site_author: Jonh Carvalho
-site_name: PC_ADS_26.2_8001
+repo_url: https://github.com/Projetos-de-Extensao/PC_CDIA_26.2_8001_III
+site_author: Equipe ZuumPay
+site_name: ZuumPay — Projeto de Cloud
 copyright: Copyright ©️ 2026, Jonh Carvalho
 
 nav: 
@@ -72,9 +72,6 @@ markdown_extensions:
 
 plugins:
   - search
-  - plantuml:
-      puml_url: https://www.plantuml.com/plantuml/
-      puml_keyword: plantuml
 
 theme:
   favicon: assets/ibmec_icon.png
