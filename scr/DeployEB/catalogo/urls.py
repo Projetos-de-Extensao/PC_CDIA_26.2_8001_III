@@ -10,7 +10,7 @@ def healthcheck(_request):
 urlpatterns = [
     path('', healthcheck),  # Health check do EB retorna 200
     path('admin/', admin.site.urls),
-    path('api/', include('produtos.urls')),
+    path('api/', include('pagamentos.urls')),
 ]
 
 # Configuração para servir arquivos de mídia em desenvolvimento
