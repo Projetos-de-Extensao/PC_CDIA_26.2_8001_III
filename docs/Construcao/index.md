@@ -9,6 +9,8 @@ O [projeto Django está em `scr/DeployEB`](https://github.com/Projetos-de-Extens
 - `/api/lojistas/` e `/api/lojistas/<id>/`
 - `/api/transacoes/` e `/api/transacoes/<id>/`
 
+`/api/` lista as coleções disponíveis. As rotas de dados exigem autenticação Django; o README contém um exemplo de requisição autenticada.
+
 O Django Admin está disponível em `/admin/`. A API é acadêmica e simulada: não processa pagamentos reais nem deve receber dados de cartão.
 
 ## Execução e publicação
