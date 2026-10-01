@@ -4,8 +4,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Configuração de DEBUG - True para desenvolvimento
-DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in {'1', 'true', 'yes'}
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in {'1', 'true', 'yes'}
 
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 if not SECRET_KEY:
@@ -13,7 +12,7 @@ if not SECRET_KEY:
         raise ImproperlyConfigured(
             'Defina DJANGO_SECRET_KEY no ambiente antes de iniciar em produção.'
         )
-    SECRET_KEY = 'django-insecure-local-development-only-key'
+    SECRET_KEY = 'local-development-only-key-do-not-use-in-production'
 
 # Configuração de arquivos de mídia
 if DEBUG:

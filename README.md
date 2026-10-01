@@ -40,21 +40,12 @@ No PowerShell, a partir da raiz do repositório:
 
 ```powershell
 cd .\scr\DeployEB
-py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
 pip install -r requirements.txt
-
-$env:DJANGO_DEBUG = "True"
-$env:DJANGO_SECRET_KEY = (python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())")
-$env:DJANGO_ALLOWED_HOSTS = "localhost,127.0.0.1"
-
 python manage.py migrate
-python manage.py createsuperuser
 python manage.py runserver
 ```
 
-A aplicação fica disponível em `http://127.0.0.1:8000/`; o health check retorna `{"status": "ok"}`. O Admin fica em `/admin/`. Crie um superusuário para entrar no Admin e testar a API. Guarde as credenciais localmente e nunca as publique no GitHub.
+A aplicação fica disponível em `http://127.0.0.1:8000/`; o health check retorna `{"status": "ok"}`. O servidor local usa configurações de desenvolvimento automaticamente. Para entrar no Admin e testar os endpoints protegidos, crie um usuário uma vez com `python manage.py createsuperuser`. Não use a configuração de desenvolvimento em produção.
 
 ### Verificar localmente
 
