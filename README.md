@@ -10,7 +10,7 @@ Projeto acadêmico da disciplina de Big Data e Cloud Computing.
 
 **Raiz da API:** `/api/` lista as coleções disponíveis.
 
-**Documentação MkDocs:** será publicada pelo GitHub Actions após habilitar GitHub Pages com a origem **GitHub Actions** nas configurações do repositório.
+**Documentação MkDocs:** [abrir site publicado](https://projetos-de-extensao.github.io/PC_CDIA_26.2_8001_III/). Build e deploy confirmados pelo GitHub Actions.
 
 > A API exige autenticação. Use credenciais de um usuário Django; não exponha credenciais administrativas em clientes públicos.
 
@@ -26,7 +26,8 @@ As coleções permitem `GET` (lista) e `POST` (criação); os endpoints de detal
 Exemplo de listagem autenticada local:
 
 ```powershell
-curl.exe -u <usuario>:<senha> http://127.0.0.1:8000/api/lojistas/
+$credenciais = "seu-usuario:sua-senha"
+curl.exe -u $credenciais http://127.0.0.1:8000/api/lojistas/
 ```
 
 `Transacao.lojista` recebe o ID de um lojista existente. Use somente valores simulados; a API não processa pagamentos reais nem deve receber dados de cartão.
