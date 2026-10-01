@@ -14,6 +14,8 @@ def api_root(_request):
         'endpoints': {
             'lojistas': '/api/lojistas/',
             'transacoes': '/api/transacoes/',
+            'aprovar_transacao': '/api/transacoes/<id>/aprovar/',
+            'cancelar_transacao': '/api/transacoes/<id>/cancelar/',
             'admin': '/admin/',
         },
     })

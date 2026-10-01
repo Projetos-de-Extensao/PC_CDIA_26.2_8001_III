@@ -36,6 +36,8 @@ class PagamentosApiTests(TestCase):
         self.assertEqual(data['status'], 'sucesso')
         self.assertIn('lojistas', data['endpoints'])
         self.assertIn('transacoes', data['endpoints'])
+        self.assertIn('aprovar_transacao', data['endpoints'])
+        self.assertIn('cancelar_transacao', data['endpoints'])
 
     def test_authenticated_user_can_list_and_create_lojistas(self):
         self.client.force_authenticate(user=self.user)
@@ -98,7 +100,6 @@ class PagamentosApiTests(TestCase):
                 'lojista': self.lojista.pk,
                 'valor': '25.50',
                 'chave_pix': 'pix-teste@example.com',
-                'status': 'PENDENTE',
             },
             format='json',
         )
@@ -107,6 +108,8 @@ class PagamentosApiTests(TestCase):
         transacao = Transacao.objects.get()
         self.assertEqual(transacao.lojista, self.lojista)
         self.assertEqual(transacao.valor, Decimal('25.50'))
+        self.assertEqual(transacao.status, Transacao.STATUS_PENDENTE)
+        self.assertIsNone(transacao.finalizado_em)
 
         detail_url = reverse(
             'pagamentos:transacao-detail',
@@ -115,15 +118,79 @@ class PagamentosApiTests(TestCase):
         self.assertEqual(self.client.get(detail_url).status_code, 200)
         update_response = self.client.patch(
             detail_url,
-            {'status': 'PAGO'},
+            {'valor': '30.00'},
             format='json',
         )
         self.assertEqual(update_response.status_code, 200)
         self.assertEqual(
             Transacao.objects.get(pk=transacao.pk).status,
-            'PAGO',
+            Transacao.STATUS_PENDENTE,
         )
         self.assertEqual(self.client.delete(detail_url).status_code, 204)
+        self.assertFalse(Transacao.objects.exists())
+
+    def test_transacao_status_changes_only_through_approval_or_cancellation(self):
+        self.client.force_authenticate(user=self.user)
+        transacao = Transacao.objects.create(
+            lojista=self.lojista,
+            valor=Decimal('25.50'),
+            chave_pix='pix-teste@example.com',
+        )
+        detail_url = reverse(
+            'pagamentos:transacao-detail',
+            kwargs={'pk': transacao.pk},
+        )
+
+        direct_update = self.client.patch(
+            detail_url,
+            {'status': Transacao.STATUS_PAGO},
+            format='json',
+        )
+        approval = self.client.post(f'{detail_url}aprovar/')
+        second_action = self.client.post(f'{detail_url}cancelar/')
+
+        self.assertEqual(direct_update.status_code, 400)
+        self.assertEqual(approval.status_code, 200)
+        self.assertEqual(approval.data['status'], Transacao.STATUS_PAGO)
+        self.assertIsNotNone(approval.data['finalizado_em'])
+        self.assertEqual(second_action.status_code, 409)
+        transacao.refresh_from_db()
+        self.assertEqual(transacao.status, Transacao.STATUS_PAGO)
+
+    def test_pending_transacao_can_be_cancelled(self):
+        self.client.force_authenticate(user=self.user)
+        transacao = Transacao.objects.create(
+            lojista=self.lojista,
+            valor=Decimal('25.50'),
+            chave_pix='pix-teste@example.com',
+        )
+        detail_url = reverse(
+            'pagamentos:transacao-detail',
+            kwargs={'pk': transacao.pk},
+        )
+
+        response = self.client.post(f'{detail_url}cancelar/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['status'], Transacao.STATUS_CANCELADO)
+        self.assertIsNotNone(response.data['finalizado_em'])
+
+    def test_transacao_rejects_non_positive_values(self):
+        self.client.force_authenticate(user=self.user)
+
+        for value in ('0', '-1.00'):
+            with self.subTest(value=value):
+                response = self.client.post(
+                    reverse('pagamentos:transacao-list'),
+                    {
+                        'lojista': self.lojista.pk,
+                        'valor': value,
+                        'chave_pix': 'pix-teste@example.com',
+                    },
+                    format='json',
+                )
+                self.assertEqual(response.status_code, 400)
+
         self.assertFalse(Transacao.objects.exists())
 
     def test_transacao_rejects_unknown_lojista(self):

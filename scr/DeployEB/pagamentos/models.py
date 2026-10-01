@@ -16,17 +16,22 @@ class Lojista(models.Model):
 
 
 class Transacao(models.Model):
+    STATUS_PENDENTE = 'PENDENTE'
+    STATUS_PAGO = 'PAGO'
+    STATUS_CANCELADO = 'CANCELADO'
+
     STATUS_CHOICES = [
-        ('PENDENTE', 'Pendente'),
-        ('PAGO', 'Pago / Aprovado'),
-        ('CANCELADO', 'Cancelado'),
+        (STATUS_PENDENTE, 'Pendente'),
+        (STATUS_PAGO, 'Pago / Aprovado'),
+        (STATUS_CANCELADO, 'Cancelado'),
     ]
 
     lojista = models.ForeignKey(Lojista, on_delete=models.CASCADE, related_name='transacoes', verbose_name="Lojista")
     valor = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor (R$)")
     chave_pix = models.CharField(max_length=255, verbose_name="Chave Pix de Destino")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDENTE', verbose_name="Status da Transação")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDENTE, verbose_name="Status da Transação")
     criado_em = models.DateTimeField(auto_now_add=True, verbose_name="Data/Hora")
+    finalizado_em = models.DateTimeField(null=True, blank=True, verbose_name="Data/Hora de Finalização")
 
     def __str__(self):
         return f"Transação R$ {self.valor} - {self.status} ({self.lojista.nome_fantasia})"
@@ -34,3 +39,9 @@ class Transacao(models.Model):
     class Meta:
         verbose_name = "Transação"
         verbose_name_plural = "Transações"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(valor__gt=0),
+                name='transacao_valor_positivo',
+            ),
+        ]

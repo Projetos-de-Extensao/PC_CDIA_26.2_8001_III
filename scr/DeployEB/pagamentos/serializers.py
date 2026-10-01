@@ -18,6 +18,18 @@ class LojistaSerializer(serializers.ModelSerializer):
 
 
 class TransacaoSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        if 'status' in self.initial_data:
+            raise serializers.ValidationError({
+                'status': 'Use as ações aprovar ou cancelar para alterar o status.'
+            })
+        return attrs
+
+    def validate_valor(self, value):
+        if value <= 0:
+            raise serializers.ValidationError('O valor da transação deve ser maior que zero.')
+        return value
+
     class Meta:
         model = Transacao
         fields = (
@@ -27,5 +39,6 @@ class TransacaoSerializer(serializers.ModelSerializer):
             'chave_pix',
             'status',
             'criado_em',
+            'finalizado_em',
         )
-        read_only_fields = ('id', 'criado_em')
+        read_only_fields = ('id', 'status', 'criado_em', 'finalizado_em')

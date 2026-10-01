@@ -16,12 +16,26 @@ Projeto acadêmico da disciplina de Big Data e Cloud Computing.
 
 ### Endpoints da API
 
-As coleções permitem `GET` (lista) e `POST` (criação); os endpoints de detalhe permitem `GET`, `PUT`, `PATCH` e `DELETE`:
+As coleções permitem `GET` (lista) e `POST` (criação). Lojistas têm operações de leitura, atualização e exclusão no detalhe. Transações começam como pendentes; o status só muda pelas ações de fluxo abaixo:
 
 | Recurso | Coleção | Detalhe |
 |---|---|---|
 | Lojistas | `/api/lojistas/` | `/api/lojistas/<id>/` |
 | Transações simuladas | `/api/transacoes/` | `/api/transacoes/<id>/` |
+
+### Fluxo de transações simuladas
+
+1. Crie a transação com um lojista existente, valor maior que zero e chave Pix fictícia. O status inicial é `PENDENTE`; datas e status são controlados pelo servidor.
+2. Finalize uma transação pendente enviando `POST` para `/api/transacoes/<id>/aprovar/` ou `/api/transacoes/<id>/cancelar/`.
+3. A resposta inclui o status final (`PAGO` ou `CANCELADO`) e `finalizado_em`. Uma transação já finalizada não pode ser finalizada de novo; a API responde HTTP 409.
+
+Exemplo local com autenticação básica:
+
+```powershell
+curl.exe -u seu-usuario:sua-senha -X POST http://127.0.0.1:8000/api/transacoes/1/aprovar/
+```
+
+Esse fluxo é apenas uma simulação acadêmica: não movimenta dinheiro, não valida a chave junto a uma instituição financeira e não deve receber dados reais de pagamento.
 
 Exemplo de listagem autenticada local:
 
@@ -34,27 +48,26 @@ curl.exe -u $credenciais http://127.0.0.1:8000/api/lojistas/
 
 ## Executar localmente
 
-Requisitos: Python 3.12 ou superior.
+Requisitos: Python 3.12 ou superior e acesso à internet para instalar as dependências.
 
-No PowerShell, a partir da raiz do repositório:
+No PowerShell, execute a partir da raiz do repositório:
 
 ```powershell
-cd .\scr\DeployEB
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
+python -m pip install -r .\scr\DeployEB\requirements.txt
+python .\scr\DeployEB\manage.py migrate
+python .\scr\DeployEB\manage.py runserver
 ```
 
-A aplicação fica disponível em `http://127.0.0.1:8000/`; o health check retorna `{"status": "ok"}`. O servidor local usa configurações de desenvolvimento automaticamente. Para entrar no Admin e testar os endpoints protegidos, crie um usuário uma vez com `python manage.py createsuperuser`. Não use a configuração de desenvolvimento em produção.
+A aplicação fica disponível em `http://127.0.0.1:8000/`; o health check retorna `{"status": "ok"}`. O servidor local usa configurações de desenvolvimento automaticamente. Para entrar no Admin e testar os endpoints protegidos, execute `python .\scr\DeployEB\manage.py createsuperuser` uma vez. Não use a configuração de desenvolvimento em produção.
 
 ### Verificar localmente
 
-Em outro terminal, com o ambiente virtual ativo e a partir de `scr/DeployEB`, valide a configuração e execute os testes automatizados:
+Em outro terminal, a partir da raiz do repositório, valide a configuração e execute os testes automatizados:
 
 ```powershell
-python manage.py check
-python manage.py makemigrations --check --dry-run
-python manage.py test pagamentos
+python .\scr\DeployEB\manage.py check
+python .\scr\DeployEB\manage.py makemigrations --check --dry-run
+python .\scr\DeployEB\manage.py test pagamentos
 ```
 
 O estado esperado é `System check identified no issues`, `No changes detected` e todos os testes aprovados. O endpoint `/admin/` redireciona visitantes não autenticados à página de login; isso é esperado. O endpoint de dados `/api/lojistas/` retorna HTTP 401 sem autenticação.

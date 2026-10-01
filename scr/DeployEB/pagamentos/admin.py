@@ -8,6 +8,7 @@ class LojistaAdmin(admin.ModelAdmin):
 
 @admin.register(Transacao)
 class TransacaoAdmin(admin.ModelAdmin):
-    list_display = ('id', 'lojista', 'valor', 'status', 'criado_em')
+    list_display = ('id', 'lojista', 'valor', 'status', 'criado_em', 'finalizado_em')
     list_filter = ('status', 'criado_em')
     search_fields = ('chave_pix', 'lojista__nome_fantasia')
+    readonly_fields = ('status', 'criado_em', 'finalizado_em')
