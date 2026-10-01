@@ -47,7 +47,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'catalogo.urls'
+ROOT_URLCONF = 'zuumpay_config.urls'
 
 TEMPLATES = [
     {
@@ -64,7 +64,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'catalogo.wsgi.application'
+WSGI_APPLICATION = 'zuumpay_config.wsgi.application'
 
 # Database
 DATABASES = {
