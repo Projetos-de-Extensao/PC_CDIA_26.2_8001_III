@@ -6,9 +6,15 @@ Projeto acadêmico da disciplina de Big Data e Cloud Computing.
 
 ## URL pública
 
-**API no Elastic Beanstalk:** pendente do primeiro deploy. Após a publicação, substitua este texto pelo CNAME apresentado por `eb status`. A raiz (`/`) responde com `{"status": "ok"}` e funciona como health check.
+**Aplicação no AWS:** [health check](http://zuumpay0.us-east-2.elasticbeanstalk.com/).
 
-**Raiz da API:** `/api/` lista as coleções disponíveis.
+**API oficial:** [abrir a raiz da API](http://zuumpay0.us-east-2.elasticbeanstalk.com/api/).
+
+**Console AWS:** [abrir o Elastic Beanstalk na região `us-east-2`](https://us-east-2.console.aws.amazon.com/elasticbeanstalk/home?region=us-east-2#/applications?applicationName=zuumpay-api).
+
+**API local:** [abrir a raiz da API](http://127.0.0.1:8000/api/) após iniciar o servidor local.
+
+O endpoint `/` responde com `{"status": "ok"}` e funciona como health check. A raiz `/api/` lista as coleções disponíveis.
 
 **Documentação MkDocs:** [abrir site publicado](https://projetos-de-extensao.github.io/PC_CDIA_26.2_8001_III/). Build e deploy confirmados pelo GitHub Actions.
 
@@ -22,6 +28,16 @@ As coleções permitem `GET` (lista) e `POST` (criação). Lojistas têm operaç
 |---|---|---|
 | Lojistas | `/api/lojistas/` | `/api/lojistas/<id>/` |
 | Transações simuladas | `/api/transacoes/` | `/api/transacoes/<id>/` |
+
+### Usar a API publicada
+
+As coleções exigem autenticação. Para listar os lojistas no ambiente AWS, use as credenciais de um usuário Django:
+
+```powershell
+curl.exe -u seu-usuario:sua-senha http://zuumpay0.us-east-2.elasticbeanstalk.com/api/lojistas/
+```
+
+Sem autenticação, `/api/lojistas/` e `/api/transacoes/` devem responder HTTP 401. A raiz `/api/` e o health check `/` podem ser usados para verificar se o serviço está disponível.
 
 ### Fluxo de transações simuladas
 
