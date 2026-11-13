@@ -132,3 +132,29 @@ A documentação da fase de iniciação e elaboração está em `docs/` e public
 - A7: variáveis de ambiente e `.env`
 - A8: seed de dados demo
 - B2/B3/B4/B5/B6/B7/B8: arquitetura e deploy descritos para Docker + Postgres + EC2
+
+## Deploy em Produção (AWS EC2 + Docker Compose + PostgreSQL)
+
+A aplicação foi migrada do Elastic Beanstalk (com SQLite) para uma arquitetura containerizada em execução em uma instância **AWS EC2 (Amazon Linux 2023)**, orquestrada via **Docker Compose** com banco de dados relacional/multimodelo **PostgreSQL 16** persistido em volume Docker.
+
+### Links da Entrega
+* **API em Produção (AWS EC2):** `http://16.59.23.184:8000/api/`
+* **Painel Administrativo (Django Admin):** `http://16.59.23.184:8000/admin/`
+* **Documentação do Projeto (MkDocs / GitHub Pages):** `https://projetos-de-extensao.github.io/pc_cdia_26.2_8001_iii/` *(verifique se a URL do seu GitHub Pages segue este padrão)*
+
+---
+
+### Arquitetura e Infraestrutura
+* **Servidor Cloud:** Instância AWS EC2 (`us-east-2`), IP Público `16.59.23.184`, com regras de entrada configuradas no Security Group para **SSH (porta 22)** e **HTTP/API (porta 8000)**.
+* **Containers (`docker-compose.yml`):**
+  * `zuumpay-web`: Aplicação Django + Django REST Framework (`python:3.12-slim`), conectada ao banco via variáveis de ambiente (`.env`).
+  * `zuumpay-db`: Banco de dados `postgres:16-alpine` com healthcheck (`pg_isready`) e persistência garantida pelo volume nomeado `deployeb_postgres_data`.
+
+---
+
+### Como Executar Localmente ou na EC2
+
+1. **Clonar o repositório e acessar o diretório de deploy:**
+   ```bash
+   git clone [https://github.com/projetos-de-extensao/pc_cdia_26.2_8001_iii.git](https://github.com/projetos-de-extensao/pc_cdia_26.2_8001_iii.git)
+   cd pc_cdia_26.2_8001_iii/scr/DeployEB
