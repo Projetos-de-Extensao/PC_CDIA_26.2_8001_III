@@ -15,12 +15,14 @@ sequenceDiagram
     API->>API: Verifica autenticação
     API->>Serializer: Valida payload
     Serializer->>DB: BEGIN (transaction.atomic)
-    Serializer->>DB: INSERT Transacao (status PENDENTE)
+    Serializer->>DB: SELECT produtos FOR UPDATE
     loop para cada item informado
-        Serializer->>DB: Confere produto e lojista
-        Serializer->>DB: INSERT ItemTransacao com preço atual
+        Serializer->>Serializer: Confere produto, duplicidade e quantidade
+        Serializer->>DB: Confere lojista, preço oficial e estoque opcional
+        Serializer->>DB: Decrementa atributos.estoque se informado
     end
-    Serializer->>Serializer: Confere soma dos itens = valor
+    Serializer->>Serializer: Confere soma dos preços oficiais = valor
+    Serializer->>DB: INSERT Transacao (status PENDENTE) e itens
     alt payload válido
         Serializer->>DB: COMMIT
         API-->>Cliente: 201 Created + transação
@@ -30,11 +32,11 @@ sequenceDiagram
     end
 ```
 
-Sem itens, a transação pode ser criada apenas com os dados do lojista/valor; nesse caso, a comparação com a soma dos itens não é aplicada.
+Uma lista `itens: []` é rejeitada. Para compatibilidade com a baseline, payloads legados que omitem a propriedade `itens` continuam aceitos sem comparação de soma ou reserva de estoque. Produtos são vinculados a lojistas, não diretamente a lojas; a validação assegura que correspondam ao lojista da transação/loja.
 
 ## 2. Aprovar ou cancelar
 
-O endpoint de ação realiza atualização condicional no banco: somente uma linha ainda pendente pode mudar de estado. Isso evita que uma segunda requisição finalize novamente a mesma transação.
+O endpoint bloqueia a linha da transação dentro de `transaction.atomic()`: somente `PENDENTE -> PAGO` e `PENDENTE -> CANCELADO` são permitidas. Os estados `PAGO` e `CANCELADO` são terminais; no cancelamento, itens existentes devolvem o estoque JSON reservado.
 
 ```mermaid
 sequenceDiagram
@@ -44,10 +46,10 @@ sequenceDiagram
 
     Operador->>API: POST /api/transacoes/{id}/aprovar/ ou /cancelar/
     API->>API: Verifica autenticação e localiza transação
-    API->>DB: UPDATE ... WHERE id = ? AND status = PENDENTE
-    alt uma linha atualizada
-        DB-->>API: Atualizada
-        API->>DB: Lê status e finalizado_em
+    API->>DB: SELECT transação FOR UPDATE
+    alt status PENDENTE
+        API->>DB: (cancelamento) bloqueia produtos e estorna estoque
+        API->>DB: Atualiza status e finalizado_em
         API-->>Operador: 200 OK + transação finalizada
     else nenhuma linha atualizada
         DB-->>API: Nenhuma linha elegível

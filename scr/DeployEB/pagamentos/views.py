@@ -1,8 +1,9 @@
 import json
 
-from django.db import connection
+from django.db import connection, transaction
 from django.utils import timezone
 from rest_framework import status as http_status
+from rest_framework.exceptions import ValidationError
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -81,19 +82,40 @@ class TransacaoViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
 
     def _finalizar_transacao(self, status_final):
-        transacao = self.get_object()
-        atualizada = Transacao.objects.filter(
-            pk=transacao.pk,
-            status=Transacao.STATUS_PENDENTE,
-        ).update(status=status_final, finalizado_em=timezone.now())
+        transacao_id = self.get_object().pk
+        with transaction.atomic():
+            transacao = Transacao.objects.select_for_update().get(pk=transacao_id)
+            if transacao.status != Transacao.STATUS_PENDENTE:
+                return Response(
+                    {'detail': 'Somente transações pendentes podem ser finalizadas.'},
+                    status=http_status.HTTP_409_CONFLICT,
+                )
 
-        if not atualizada:
-            return Response(
-                {'detail': 'Somente transações pendentes podem ser finalizadas.'},
-                status=http_status.HTTP_409_CONFLICT,
-            )
+            if status_final == Transacao.STATUS_CANCELADO:
+                quantidades = {}
+                for item in transacao.itens.all():
+                    quantidades[item.produto_id] = (
+                        quantidades.get(item.produto_id, 0) + item.quantidade
+                    )
 
-        transacao.refresh_from_db(fields=('status', 'finalizado_em'))
+                produtos = Produto.objects.select_for_update().filter(
+                    pk__in=quantidades
+                ).order_by('pk')
+                for produto in produtos:
+                    if 'estoque' not in produto.atributos:
+                        continue
+                    estoque = produto.atributos['estoque']
+                    if type(estoque) is not int or estoque < 0:
+                        raise ValidationError({
+                            'itens': f'O estoque do produto {produto.nome} está inválido.'
+                        })
+                    produto.atributos['estoque'] = estoque + quantidades[produto.pk]
+                    produto.save(update_fields=('atributos', 'atualizado_em'))
+
+            transacao.status = status_final
+            transacao.finalizado_em = timezone.now()
+            transacao.save(update_fields=('status', 'finalizado_em'))
+
         return Response(self.get_serializer(transacao).data)
 
     @action(detail=True, methods=('post',))

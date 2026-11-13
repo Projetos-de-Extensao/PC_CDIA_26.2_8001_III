@@ -77,10 +77,11 @@ erDiagram
 | Índice de atributos | `GinIndex` em `Produto.atributos`, usado para consultas de containment no PostgreSQL |
 | Transação | FK obrigatória para lojista; FK opcional de loja com `SET_NULL`; valor positivo |
 | Item de transação | FKs para transação e produto; quantidade e preço unitário positivos; produto protegido contra remoção (`PROTECT`) |
-| Consistência dos itens | Serializer exige que os produtos sejam do lojista da transação e, havendo itens, que a soma coincida com o valor; gravação ocorre em `transaction.atomic()` |
-| Status da transação | `PENDENTE`, `PAGO` ou `CANCELADO`; apenas pendentes podem ser finalizadas pela ação correspondente |
+| Consistência dos itens | Criação atômica valida lista vazia explícita, duplicidade, quantidade positiva, lojista do produto e soma a partir do preço oficial; payload legado sem a propriedade `itens` permanece aceito |
+| Estoque flexível | `atributos` é objeto JSON; `estoque`, se presente, deve ser inteiro não negativo. Criação bloqueia produtos, debita saldo e cancelamento de transação pendente estorna saldo |
+| Status da transação | Somente `PENDENTE -> PAGO` e `PENDENTE -> CANCELADO`; `PAGO` e `CANCELADO` são terminais. Finalização e atualização de transação usam `transaction.atomic()` e `select_for_update()` |
 
-O saldo/estoque não é debitado pelo fluxo de transação atual. O domínio representa uma simulação de pagamentos e não efetua processamento financeiro real.
+Produtos são associados a `Lojista`, não diretamente a `Loja`; sem alteração do modelo, o isolamento de itens é validado pelo lojista que possui a loja vinculada. O domínio representa pagamentos simulados e não efetua processamento financeiro real.
 
 ## 3. Migrações e armazenamento
 

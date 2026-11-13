@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient, APIRequestFactory
 
-from .models import Categoria, Loja, Lojista, Produto, Transacao
+from .models import Categoria, ItemTransacao, Loja, Lojista, Produto, Transacao
 from .views import ProdutoViewSet
 
 
@@ -179,6 +179,23 @@ class PagamentosApiTests(TestCase):
         self.assertEqual(response.data['status'], Transacao.STATUS_CANCELADO)
         self.assertIsNotNone(response.data['finalizado_em'])
 
+    def test_cancelled_transacao_cannot_be_approved(self):
+        self.client.force_authenticate(user=self.user)
+        transacao = Transacao.objects.create(
+            lojista=self.lojista,
+            valor=Decimal('25.50'),
+            chave_pix='pix-teste@example.com',
+            status=Transacao.STATUS_CANCELADO,
+        )
+
+        response = self.client.post(
+            reverse('pagamentos:transacao-aprovar', kwargs={'pk': transacao.pk})
+        )
+
+        self.assertEqual(response.status_code, 409)
+        transacao.refresh_from_db()
+        self.assertEqual(transacao.status, Transacao.STATUS_CANCELADO)
+
     def test_transacao_rejects_non_positive_values(self):
         self.client.force_authenticate(user=self.user)
 
@@ -295,3 +312,148 @@ class PagamentosApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertFalse(Transacao.objects.exists())
+
+    def test_transaction_rejects_products_from_another_lojista(self):
+        self.client.force_authenticate(user=self.user)
+        outro_lojista = Lojista.objects.create(
+            nome_fantasia='Outro Lojista',
+            razao_social='Outro Lojista LTDA',
+            cnpj='11111111000199',
+            email='outro@example.com',
+        )
+        produto = Produto.objects.create(
+            lojista=outro_lojista,
+            nome='Produto externo',
+            preco=Decimal('10.00'),
+            estoque=1,
+        )
+
+        response = self.client.post(
+            reverse('pagamentos:transacao-list'),
+            {
+                'lojista': self.lojista.pk,
+                'valor': '10.00',
+                'chave_pix': 'pix-teste@example.com',
+                'itens': [{'produto': produto.pk, 'quantidade': 1}],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Transacao.objects.exists())
+
+    def test_transaction_rejects_duplicate_and_explicitly_empty_items(self):
+        self.client.force_authenticate(user=self.user)
+        produto = Produto.objects.create(
+            lojista=self.lojista,
+            nome='Produto de teste',
+            preco=Decimal('10.00'),
+            estoque=3,
+        )
+        base_payload = {
+            'lojista': self.lojista.pk,
+            'valor': '20.00',
+            'chave_pix': 'pix-teste@example.com',
+        }
+
+        for itens in (
+            [
+                {'produto': produto.pk, 'quantidade': 1},
+                {'produto': produto.pk, 'quantidade': 1},
+            ],
+            [],
+        ):
+            with self.subTest(itens=itens):
+                response = self.client.post(
+                    reverse('pagamentos:transacao-list'),
+                    {**base_payload, 'itens': itens},
+                    format='json',
+                )
+                self.assertEqual(response.status_code, 400)
+
+        self.assertFalse(Transacao.objects.exists())
+        self.assertFalse(ItemTransacao.objects.exists())
+
+    def test_transaction_decrements_and_restores_optional_attribute_stock(self):
+        self.client.force_authenticate(user=self.user)
+        produto = Produto.objects.create(
+            lojista=self.lojista,
+            nome='Produto com estoque JSON',
+            preco=Decimal('10.00'),
+            estoque=99,
+            atributos={'estoque': 4},
+        )
+        payload = {
+            'lojista': self.lojista.pk,
+            'valor': '20.00',
+            'chave_pix': 'pix-teste@example.com',
+            'itens': [{
+                'produto': produto.pk,
+                'quantidade': 2,
+                'preco_unitario': '0.01',
+            }],
+        }
+
+        created = self.client.post(
+            reverse('pagamentos:transacao-list'), payload, format='json'
+        )
+
+        self.assertEqual(created.status_code, 201)
+        item = ItemTransacao.objects.get(transacao_id=created.data['id'])
+        self.assertEqual(item.preco_unitario, Decimal('10.00'))
+        produto.refresh_from_db()
+        self.assertEqual(produto.atributos['estoque'], 2)
+
+        cancelled = self.client.post(
+            reverse(
+                'pagamentos:transacao-cancelar',
+                kwargs={'pk': created.data['id']},
+            )
+        )
+
+        self.assertEqual(cancelled.status_code, 200)
+        produto.refresh_from_db()
+        self.assertEqual(produto.atributos['estoque'], 4)
+
+    def test_transaction_rejects_insufficient_attribute_stock_atomically(self):
+        self.client.force_authenticate(user=self.user)
+        produto = Produto.objects.create(
+            lojista=self.lojista,
+            nome='Produto sem saldo',
+            preco=Decimal('10.00'),
+            estoque=99,
+            atributos={'estoque': 1},
+        )
+
+        response = self.client.post(
+            reverse('pagamentos:transacao-list'),
+            {
+                'lojista': self.lojista.pk,
+                'valor': '20.00',
+                'chave_pix': 'pix-teste@example.com',
+                'itens': [{'produto': produto.pk, 'quantidade': 2}],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Transacao.objects.exists())
+        produto.refresh_from_db()
+        self.assertEqual(produto.atributos['estoque'], 1)
+
+    def test_product_attributes_require_object_and_nonnegative_integer_stock(self):
+        self.client.force_authenticate(user=self.user)
+        payload = {
+            'lojista': self.lojista.pk,
+            'nome': 'Produto JSON inválido',
+            'preco': '10.00',
+        }
+
+        for atributos in (['lista'], 'texto', {'estoque': -1}, {'estoque': 1.5}):
+            with self.subTest(atributos=atributos):
+                response = self.client.post(
+                    reverse('pagamentos:produto-list'),
+                    {**payload, 'atributos': atributos},
+                    format='json',
+                )
+                self.assertEqual(response.status_code, 400)

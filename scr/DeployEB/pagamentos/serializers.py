@@ -61,6 +61,12 @@ class ProdutoSerializer(serializers.ModelSerializer):
     def validate_atributos(self, value):
         if not isinstance(value, dict):
             raise serializers.ValidationError('Os atributos devem ser um objeto JSON válido.')
+        if 'estoque' in value and (
+            type(value['estoque']) is not int or value['estoque'] < 0
+        ):
+            raise serializers.ValidationError(
+                'O atributo estoque deve ser um número inteiro maior ou igual a zero.'
+            )
         return value
 
 
@@ -93,6 +99,18 @@ class TransacaoSerializer(serializers.ModelSerializer):
         if lojista and loja and loja.lojista_id != lojista.id:
             raise serializers.ValidationError({'loja': 'A loja deve pertencer ao lojista informado.'})
 
+        itens = attrs.get('itens')
+        if self.instance is None and 'itens' in self.initial_data and not itens:
+            raise serializers.ValidationError({
+                'itens': 'Informe ao menos um item na transação.'
+            })
+        if itens is not None:
+            produtos = [item['produto'].pk for item in itens]
+            if len(produtos) != len(set(produtos)):
+                raise serializers.ValidationError({
+                    'itens': 'Não repita produtos; consolide a quantidade em um único item.'
+                })
+
         return attrs
 
     def validate_valor(self, value):
@@ -103,28 +121,56 @@ class TransacaoSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         itens_data = validated_data.pop('itens', [])
         with transaction.atomic():
-            transacao = Transacao.objects.create(**validated_data)
+            produtos = Produto.objects.select_for_update().filter(
+                pk__in={item['produto'].pk for item in itens_data}
+            ).order_by('pk')
+            produtos_por_id = {produto.pk: produto for produto in produtos}
+
             total_itens = Decimal('0.00')
             for item_data in itens_data:
-                produto = item_data['produto']
-                if produto.lojista_id != transacao.lojista_id:
+                produto_id = item_data['produto'].pk
+                produto = produtos_por_id.get(produto_id)
+                if produto is None:
                     raise serializers.ValidationError({
-                        'itens': 'Cada item da transação deve pertencer ao lojista do pedido.'
+                        'itens': 'Um ou mais produtos não estão disponíveis.'
                     })
+                if produto.lojista_id != validated_data['lojista'].id:
+                    raise serializers.ValidationError({
+                        'itens': 'Cada produto deve pertencer ao lojista da transação.'
+                    })
+
                 quantidade = item_data['quantidade']
-                item = ItemTransacao.objects.create(
+                if 'estoque' in produto.atributos:
+                    saldo = produto.atributos['estoque']
+                    if type(saldo) is not int or saldo < quantidade:
+                        raise serializers.ValidationError({
+                            'itens': f'Estoque insuficiente para o produto {produto.nome}.'
+                        })
+                    produto.atributos['estoque'] = saldo - quantidade
+                    produto.save(update_fields=('atributos', 'atualizado_em'))
+                total_itens += Decimal(quantidade) * produto.preco
+
+            if itens_data and validated_data['valor'] != total_itens:
+                raise serializers.ValidationError({
+                    'valor': 'O valor da transação deve coincidir com a soma dos itens.'
+                })
+
+            transacao = Transacao.objects.create(**validated_data)
+            for item_data in itens_data:
+                produto = produtos_por_id[item_data['produto'].pk]
+                quantidade = item_data['quantidade']
+                ItemTransacao.objects.create(
                     transacao=transacao,
                     produto=produto,
                     quantidade=quantidade,
                     preco_unitario=produto.preco,
                 )
-                total_itens += item.total
-
-            if itens_data and transacao.valor != total_itens:
-                raise serializers.ValidationError({
-                    'valor': 'O valor da transação deve coincidir com a soma dos itens.'
-                })
             return transacao
+
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            transacao = Transacao.objects.select_for_update().get(pk=instance.pk)
+            return super().update(transacao, validated_data)
 
     class Meta:
         model = Transacao
