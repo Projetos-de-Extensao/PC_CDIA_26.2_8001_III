@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Categoria, ItemTransacao, Loja, Lojista, Produto, Transacao
+from .services import TransacaoService
 from .serializers import (
     CategoriaSerializer,
     ItemTransacaoSerializer,
@@ -100,19 +101,9 @@ class TransacaoViewSet(viewsets.ModelViewSet):
 
                 produtos = Produto.objects.select_for_update().filter(pk__in=quantidades).order_by('pk')
                 for produto in produtos:
-                    produto.estoque += quantidades[produto.pk]
-                    if isinstance(produto.atributos, dict) and 'estoque' in produto.atributos:
-                        estoque = produto.atributos['estoque']
-                        if type(estoque) is not int or estoque < 0:
-                            raise ValidationError({
-                                'itens': f'O estoque do produto {produto.nome} está inválido.'
-                            })
-                        produto.atributos['estoque'] = estoque + quantidades[produto.pk]
-                    produto.save(update_fields=('estoque', 'atributos', 'atualizado_em'))
+                    TransacaoService.repor_estoque(produto, quantidades[produto.pk])
 
-            transacao.status = status_final
-            transacao.finalizado_em = timezone.now()
-            transacao.save(update_fields=('status', 'finalizado_em'))
+            transacao.registrar_status(status_final, motivo='Ação da API de transação.')
 
         return Response(self.get_serializer(transacao).data)
 

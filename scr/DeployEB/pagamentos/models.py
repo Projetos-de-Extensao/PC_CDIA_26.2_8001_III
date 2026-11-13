@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.contrib.postgres.indexes import GinIndex
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 
 class Lojista(models.Model):
@@ -178,6 +179,20 @@ class Transacao(models.Model):
                 f"Transição inválida de status: {self.status} -> {novo_status}."
             )
 
+    def registrar_status(self, novo_status, motivo=''):
+        status_anterior = self.status
+        self.validar_transicao(novo_status)
+        self.status = novo_status
+        if novo_status in {self.STATUS_CANCELADO, self.STATUS_ESTORNADO, self.STATUS_FALHADO, self.STATUS_PAGO}:
+            self.finalizado_em = timezone.now()
+        self.save(update_fields=('status', 'finalizado_em'))
+        TransacaoStatusHistorico.objects.create(
+            transacao=self,
+            status_anterior=status_anterior,
+            status_novo=novo_status,
+            motivo=motivo,
+        )
+
     def __str__(self):
         return f"Transação R$ {self.valor} - {self.status} ({self.lojista.nome_fantasia})"
 
@@ -190,6 +205,35 @@ class Transacao(models.Model):
                 name='transacao_valor_positivo',
             ),
         ]
+
+
+class TransacaoStatusHistorico(models.Model):
+    transacao = models.ForeignKey(
+        Transacao,
+        on_delete=models.CASCADE,
+        related_name='historico_status',
+        verbose_name='Transação',
+    )
+    status_anterior = models.CharField(
+        max_length=20,
+        choices=Transacao.STATUS_CHOICES,
+        verbose_name='Status anterior',
+    )
+    status_novo = models.CharField(
+        max_length=20,
+        choices=Transacao.STATUS_CHOICES,
+        verbose_name='Status novo',
+    )
+    motivo = models.CharField(max_length=255, blank=True, default='', verbose_name='Motivo')
+    criado_em = models.DateTimeField(auto_now_add=True, verbose_name='Data/Hora do evento')
+
+    def __str__(self):
+        return f'{self.transacao_id}: {self.status_anterior} -> {self.status_novo}'
+
+    class Meta:
+        verbose_name = 'Histórico de status da transação'
+        verbose_name_plural = 'Históricos de status da transação'
+        ordering = ['-criado_em']
 
 
 class ItemTransacao(models.Model):
