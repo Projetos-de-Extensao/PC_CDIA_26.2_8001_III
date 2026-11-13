@@ -15,6 +15,7 @@ class LojistaSerializer(serializers.ModelSerializer):
             'razao_social',
             'cnpj',
             'email',
+            'status_conta',
             'criado_em',
         )
         read_only_fields = ('id', 'criado_em')
@@ -94,10 +95,18 @@ class TransacaoSerializer(serializers.ModelSerializer):
                 'status': 'Use as ações aprovar ou cancelar para alterar o status.'
             })
 
-        lojista = attrs.get('lojista')
-        loja = attrs.get('loja')
+        lojista = attrs.get('lojista') or getattr(self.instance, 'lojista', None)
+        loja = attrs.get('loja') or getattr(self.instance, 'loja', None)
         if lojista and loja and loja.lojista_id != lojista.id:
             raise serializers.ValidationError({'loja': 'A loja deve pertencer ao lojista informado.'})
+
+        if lojista and lojista.status_conta != Lojista.STATUS_ATIVO:
+            raise serializers.ValidationError({
+                'lojista': 'Só é possível criar transações para lojistas com conta ativa.'
+            })
+
+        if loja and not loja.ativo:
+            raise serializers.ValidationError({'loja': 'A loja informada está inativa.'})
 
         itens = attrs.get('itens')
         if self.instance is None and 'itens' in self.initial_data and not itens:
@@ -110,6 +119,12 @@ class TransacaoSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'itens': 'Não repita produtos; consolide a quantidade em um único item.'
                 })
+            for item in itens:
+                produto = item['produto']
+                if produto.lojista_id != lojista.id:
+                    raise serializers.ValidationError({
+                        'itens': f'O produto {produto.nome} não pertence ao lojista da transação.'
+                    })
 
         return attrs
 
@@ -121,6 +136,13 @@ class TransacaoSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         itens_data = validated_data.pop('itens', [])
         with transaction.atomic():
+            lojista = validated_data['lojista']
+            lojista = Lojista.objects.select_for_update().get(pk=lojista.pk)
+            if lojista.status_conta != Lojista.STATUS_ATIVO:
+                raise serializers.ValidationError({
+                    'lojista': 'Só é possível criar transações para lojistas com conta ativa.'
+                })
+
             produtos = Produto.objects.select_for_update().filter(
                 pk__in={item['produto'].pk for item in itens_data}
             ).order_by('pk')
@@ -134,20 +156,33 @@ class TransacaoSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({
                         'itens': 'Um ou mais produtos não estão disponíveis.'
                     })
-                if produto.lojista_id != validated_data['lojista'].id:
+                if produto.lojista_id != lojista.id:
                     raise serializers.ValidationError({
                         'itens': 'Cada produto deve pertencer ao lojista da transação.'
                     })
 
                 quantidade = item_data['quantidade']
-                if 'estoque' in produto.atributos:
-                    saldo = produto.atributos['estoque']
-                    if type(saldo) is not int or saldo < quantidade:
+                estoque_total = produto.estoque
+                if isinstance(produto.atributos, dict) and 'estoque' in produto.atributos:
+                    estoque_json = produto.atributos['estoque']
+                    if type(estoque_json) is int:
+                        estoque_total = min(estoque_total, estoque_json)
+                    else:
                         raise serializers.ValidationError({
-                            'itens': f'Estoque insuficiente para o produto {produto.nome}.'
+                            'itens': f'O estoque do produto {produto.nome} está em formato inválido.'
                         })
-                    produto.atributos['estoque'] = saldo - quantidade
-                    produto.save(update_fields=('atributos', 'atualizado_em'))
+
+                if estoque_total < quantidade:
+                    raise serializers.ValidationError({
+                        'itens': f'Estoque insuficiente para o produto {produto.nome}.'
+                    })
+
+                produto.estoque = max(0, produto.estoque - quantidade)
+                if isinstance(produto.atributos, dict) and 'estoque' in produto.atributos:
+                    estoque_json = produto.atributos['estoque']
+                    if type(estoque_json) is int:
+                        produto.atributos['estoque'] = max(0, estoque_json - quantidade)
+                produto.save(update_fields=('estoque', 'atributos', 'atualizado_em'))
                 total_itens += Decimal(quantidade) * produto.preco
 
             if itens_data and validated_data['valor'] != total_itens:

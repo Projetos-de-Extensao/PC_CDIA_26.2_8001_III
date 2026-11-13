@@ -1,15 +1,36 @@
 from decimal import Decimal
 
 from django.contrib.postgres.indexes import GinIndex
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
 class Lojista(models.Model):
+    STATUS_ATIVO = 'ATIVO'
+    STATUS_PENDENTE_APROVACAO = 'PENDENTE_APROVACAO'
+    STATUS_SUSPENSO = 'SUSPENSO'
+
+    STATUS_CHOICES = [
+        (STATUS_ATIVO, 'Ativo'),
+        (STATUS_PENDENTE_APROVACAO, 'Pendente de aprovação'),
+        (STATUS_SUSPENSO, 'Suspenso'),
+    ]
+
     nome_fantasia = models.CharField(max_length=150, verbose_name="Nome Fantasia")
     razao_social = models.CharField(max_length=150, verbose_name="Razão Social")
     cnpj = models.CharField(max_length=14, unique=True, verbose_name="CNPJ")
     email = models.EmailField(unique=True, verbose_name="E-mail de Contato")
+    status_conta = models.CharField(
+        max_length=24,
+        choices=STATUS_CHOICES,
+        default=STATUS_ATIVO,
+        verbose_name="Status da conta",
+    )
     criado_em = models.DateTimeField(auto_now_add=True, verbose_name="Data de Cadastro")
+
+    @property
+    def ativo(self):
+        return self.status_conta == self.STATUS_ATIVO
 
     def __str__(self):
         return f"{self.nome_fantasia} ({self.cnpj})"
@@ -101,13 +122,19 @@ class ItemCatalogo(Produto):
 
 class Transacao(models.Model):
     STATUS_PENDENTE = 'PENDENTE'
+    STATUS_EM_ANALISE = 'EM_ANALISE'
     STATUS_PAGO = 'PAGO'
     STATUS_CANCELADO = 'CANCELADO'
+    STATUS_ESTORNADO = 'ESTORNADO'
+    STATUS_FALHADO = 'FALHADO'
 
     STATUS_CHOICES = [
         (STATUS_PENDENTE, 'Pendente'),
+        (STATUS_EM_ANALISE, 'Em análise'),
         (STATUS_PAGO, 'Pago / Aprovado'),
         (STATUS_CANCELADO, 'Cancelado'),
+        (STATUS_ESTORNADO, 'Estornado'),
+        (STATUS_FALHADO, 'Falhado'),
     ]
 
     lojista = models.ForeignKey(
@@ -135,6 +162,21 @@ class Transacao(models.Model):
     observacoes = models.TextField(blank=True, default='', verbose_name="Observações")
     criado_em = models.DateTimeField(auto_now_add=True, verbose_name="Data/Hora")
     finalizado_em = models.DateTimeField(null=True, blank=True, verbose_name="Data/Hora de Finalização")
+
+    def validar_transicao(self, novo_status):
+        transicoes_validas = {
+            self.STATUS_PENDENTE: {self.STATUS_EM_ANALISE, self.STATUS_PAGO, self.STATUS_CANCELADO, self.STATUS_FALHADO},
+            self.STATUS_EM_ANALISE: {self.STATUS_PAGO, self.STATUS_CANCELADO, self.STATUS_FALHADO},
+            self.STATUS_PAGO: {self.STATUS_ESTORNADO},
+            self.STATUS_CANCELADO: set(),
+            self.STATUS_ESTORNADO: set(),
+            self.STATUS_FALHADO: set(),
+        }
+
+        if novo_status not in transicoes_validas.get(self.status, set()):
+            raise ValidationError(
+                f"Transição inválida de status: {self.status} -> {novo_status}."
+            )
 
     def __str__(self):
         return f"Transação R$ {self.valor} - {self.status} ({self.lojista.nome_fantasia})"

@@ -2,6 +2,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db.models import QuerySet
 from django.test import TestCase
 from django.urls import reverse
@@ -229,6 +230,61 @@ class PagamentosApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertFalse(Transacao.objects.exists())
+
+    def test_inactive_lojista_cannot_create_transacao(self):
+        self.client.force_authenticate(user=self.user)
+        produto = Produto.objects.create(
+            lojista=self.lojista,
+            nome='Produto ativo',
+            preco=Decimal('25.50'),
+            estoque=5,
+        )
+        self.lojista.status_conta = Lojista.STATUS_SUSPENSO
+        self.lojista.save(update_fields=['status_conta'])
+
+        response = self.client.post(
+            reverse('pagamentos:transacao-list'),
+            {
+                'lojista': self.lojista.pk,
+                'valor': '25.50',
+                'chave_pix': 'pix-teste@example.com',
+                'itens': [{'produto': produto.pk, 'quantidade': 1}],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue('lojista' in response.data or 'itens' in response.data)
+        self.assertFalse(Transacao.objects.exists())
+
+    def test_transaction_status_transition_requires_valid_chain(self):
+        transacao = Transacao.objects.create(
+            lojista=self.lojista,
+            valor=Decimal('25.50'),
+            chave_pix='pix-teste@example.com',
+            status=Transacao.STATUS_PAGO,
+        )
+
+        with self.assertRaises(ValidationError):
+            transacao.validar_transicao(Transacao.STATUS_PENDENTE)
+
+        transacao.status = Transacao.STATUS_PENDENTE
+        transacao.validar_transicao(Transacao.STATUS_PAGO)
+
+    def test_paid_transaction_can_be_refunded(self):
+        self.client.force_authenticate(user=self.user)
+        transacao = Transacao.objects.create(
+            lojista=self.lojista,
+            valor=Decimal('25.50'),
+            chave_pix='pix-teste@example.com',
+            status=Transacao.STATUS_PAGO,
+        )
+        detail_url = reverse('pagamentos:transacao-detail', kwargs={'pk': transacao.pk})
+
+        response = self.client.post(f'{detail_url}estornar/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['status'], Transacao.STATUS_ESTORNADO)
 
     def test_product_json_attribute_filter_works(self):
         self.client.force_authenticate(user=self.user)
