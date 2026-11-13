@@ -50,3 +50,17 @@ flowchart TD
 
 ## 6. Observações
 Os casos de uso arquiteturais evidenciam a escolha da arquitetura de aplicação em camadas, com persistência em banco relacional e flexibilidade semiestruturada para atributos de produto. Esse desenho minimiza o risco de mudança de domínio e atende aos requisitos de API, deploy e documentação do projeto.
+
+## 7. Casos de uso identificados
+
+| ID | Caso de uso | Ator primário | Resultado esperado |
+|---|---|---|---|
+| UC-01 | Consumir a API autenticado | Cliente da API | Operações protegidas por autenticação DRF |
+| UC-02 | Gerenciar lojistas e catálogo | Administrador ou cliente autenticado | CRUD de lojistas, lojas, categorias, produtos e itens de transação |
+| UC-03 | Consultar atributos flexíveis de produto | Cliente autenticado | Filtragem JSON; no PostgreSQL, consulta por containment com índice GIN disponível |
+| UC-04 | Criar e finalizar transação | Cliente autenticado ou administrador | Criação atômica e transição de pendente para aprovada ou cancelada |
+| UC-05 | Implantar e operar a aplicação | Operador | Serviços web e banco iniciados e verificáveis no Compose/EC2 |
+| UC-06 | Persistir e recuperar os dados | Operador e aplicação | PostgreSQL persistido em volume nomeado do Compose |
+| UC-07 | Publicar documentação | Mantenedor do repositório | Site MkDocs construído e publicado pelo GitHub Actions |
+
+O detalhamento requisito → caso de uso → componente → teste/evidência está na [matriz de rastreamento](maps.md). Os testes listados ali são os existentes no repositório; as verificações de infraestrutura são evidências manuais, não testes automatizados já executados.

@@ -140,7 +140,7 @@ A aplicação foi migrada do Elastic Beanstalk (com SQLite) para uma arquitetura
 ### Links da Entrega
 * **API em Produção (AWS EC2):** `http://16.59.23.184:8000/api/`
 * **Painel Administrativo (Django Admin):** `http://16.59.23.184:8000/admin/`
-* **Documentação do Projeto (MkDocs / GitHub Pages):** `https://projetos-de-extensao.github.io/pc_cdia_26.2_8001_iii/` *(verifique se a URL do seu GitHub Pages segue este padrão)*
+* **Documentação do Projeto (MkDocs / GitHub Pages):** `https://projetos-de-extensao.github.io/PC_CDIA_26.2_8001_III/`
 
 ---
 

@@ -13,6 +13,10 @@ nav:
   - Elaboração:
     - Index: Elaboracao/index.md
     - Casos de Uso Arquiteturais: Elaboracao/cua.md
+    - Mapa de Arquitetura e Rastreamento: Elaboracao/maps.md
+    - Diagrama de Componentes: Elaboracao/dim_comp.md
+    - Modelo Relacional do Banco: Elaboracao/dimrbd.md
+    - Sequência de Comunicação: Elaboracao/seq_com.md
   - Construção:
     - Index: Construcao/index.md
     - Atividades de Deploy: Construcao/ativ_deploy.md
@@ -57,7 +61,11 @@ markdown_extensions:
   # Code Blocks, Tooltips
   - pymdownx.snippets
   # Admonitions, Annotations, Code Blocks, Content Tabs
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format ''
   # Content Tabs
   - pymdownx.tabbed:
       alternate_style: true
@@ -73,6 +81,12 @@ markdown_extensions:
 
 plugins:
   - search
+  - plantuml:
+      puml_url: https://www.plantuml.com/plantuml
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js
+  - js/mermaid-init.js
 
 theme:
   favicon: assets/ibmec_icon.png
