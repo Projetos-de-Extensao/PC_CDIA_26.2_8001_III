@@ -1,11 +1,14 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.db.models import QuerySet
 from django.test import TestCase
 from django.urls import reverse
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APIRequestFactory
 
-from .models import Lojista, Transacao
+from .models import Categoria, Loja, Lojista, Produto, Transacao
+from .views import ProdutoViewSet
 
 
 class PagamentosApiTests(TestCase):
@@ -202,6 +205,74 @@ class PagamentosApiTests(TestCase):
                 'lojista': 9999,
                 'valor': '25.50',
                 'chave_pix': 'pix-teste@example.com',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Transacao.objects.exists())
+
+    def test_product_json_attribute_filter_works(self):
+        self.client.force_authenticate(user=self.user)
+        categoria = Categoria.objects.create(nome='Smart Home', descricao='Casa inteligente')
+        produto = Produto.objects.create(
+            lojista=self.lojista,
+            nome='Sensor de Presença',
+            descricao='Sensor inteligente',
+            preco=Decimal('60.00'),
+            estoque=7,
+            atributos={'cor': 'branco', 'tipo': 'sensor', 'wifi': True},
+        )
+        produto.categorias.add(categoria)
+
+        response = self.client.get(
+            reverse('pagamentos:produto-list'),
+            {'atributos__chave': 'tipo', 'atributos__valor': 'sensor'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['id'], produto.id)
+
+    def test_postgres_json_filter_uses_indexable_containment_query(self):
+        view = ProdutoViewSet()
+        request = APIRequestFactory().get(
+            '/api/produtos/',
+            {'atributos__chave': 'tipo', 'atributos__valor': 'sensor'},
+        )
+        view.action_map = {'get': 'list'}
+        view.request = view.initialize_request(request)
+
+        with patch('pagamentos.views.connection.vendor', 'postgresql'):
+            queryset = view.get_queryset()
+
+        self.assertIsInstance(queryset, QuerySet)
+        lookup = queryset.query.where.children[-1]
+        self.assertEqual(lookup.lookup_name, 'contains')
+        self.assertEqual(lookup.rhs, {'tipo': 'sensor'})
+
+    def test_transaction_atomic_rollback_on_invalid_items(self):
+        self.client.force_authenticate(user=self.user)
+        categoria = Categoria.objects.create(nome='Tecnologia', descricao='Eletrônicos')
+        produto = Produto.objects.create(
+            lojista=self.lojista,
+            nome='Câmera',
+            descricao='Câmera de segurança',
+            preco=Decimal('250.00'),
+            estoque=5,
+            atributos={'marca': 'Zuum'},
+        )
+        produto.categorias.add(categoria)
+
+        response = self.client.post(
+            reverse('pagamentos:transacao-list'),
+            {
+                'lojista': self.lojista.pk,
+                'valor': '300.00',
+                'chave_pix': 'pix-demo@example.com',
+                'itens': [
+                    {'produto': produto.pk, 'quantidade': 1},
+                ],
             },
             format='json',
         )

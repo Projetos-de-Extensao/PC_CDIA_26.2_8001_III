@@ -1,24 +1,22 @@
-# Construção e deploy
+﻿# Construção e implantação
 
-Esta etapa reúne a implementação do MVP ZuumPay e as instruções para executar e publicar a aplicação.
+A fase de construção implementa a solução em Django, com integração ao PostgreSQL e preparação para deploy em EC2 com Docker Compose.
 
-## Aplicação
+## Estrutura da solução
+- `scr/DeployEB` contém a aplicação Django
+- `pagamentos` implementa o domínio de lojistas, lojas, produtos e transações
+- `docker-compose.yml` orquestra `web` e `db`
+- `.env` guarda segredos fora do versionamento
 
-O [projeto Django está em `scr/DeployEB`](https://github.com/Projetos-de-Extensao/PC_CDIA_26.2_8001_III/tree/main/scr/DeployEB). O app `pagamentos` contém os modelos `Lojista` e `Transacao`; cada transação está relacionada a um lojista. A API REST autenticada oferece operações de consulta, criação, atualização e remoção:
+## Fluxo de validação
+1. Instalar dependências e configurar `.env`
+2. Rodar migrações e carga de dados de exemplo
+3. Validar endpoints e regras do negócio
+4. Subir os containers e confirmar persistência no volume de dados
 
-- `/api/lojistas/` e `/api/lojistas/<id>/`
-- `/api/transacoes/` e `/api/transacoes/<id>/`
-
-`/api/` lista as coleções disponíveis. As rotas de dados exigem autenticação Django; o README contém um exemplo de requisição autenticada.
-
-O Django Admin está disponível em `/admin/`. A API é acadêmica e simulada: não processa pagamentos reais nem deve receber dados de cartão.
-
-## Execução e publicação
-
-O [README do repositório](https://github.com/Projetos-de-Extensao/PC_CDIA_26.2_8001_III/blob/main/README.md) contém os requisitos, os comandos para criar o ambiente virtual, instalar dependências, executar migrações, criar um superusuário e iniciar o servidor local. Também documenta a preparação do pacote `app.zip` e as etapas de publicação no AWS Elastic Beanstalk.
-
-O pacote é criado por `python package_eb.py` a partir de `scr/DeployEB`; as instruções indicam como configurar o ambiente AWS, definir variáveis sensíveis, publicar a aplicação e verificar o health check. A URL pública deve ser registrada no README após o deploy confirmado.
-
-## Escopo e limitações
-
-O app usa SQLite por padrão e o Elastic Beanstalk ainda precisa ser configurado com um banco gerenciado antes de qualquer uso que exija persistência confiável ou escala horizontal. A API usa autenticação Django e requer um superusuário para acesso administrativo. Verifique o README para as opções de produção e HTTPS.
+## Checklist de deploy EC2
+- Instalar Docker e Docker Compose
+- Ajustar Security Group para liberar SSH e a porta da API
+- Clonar o repositório e configurar `.env`
+- Executar `docker compose up -d --build`
+- Verificar logs e acesso à API

@@ -1,137 +1,134 @@
-# Zuumpay — API de pagamentos
+﻿# ZuumPay - API de pagamentos multimodelo
 
-Aplicação Django/ Django REST Framework para cadastro de lojistas e transações. O projeto pode ser executado localmente e empacotado para publicação no AWS Elastic Beanstalk.
+Projeto acadêmico de cloud e arquitetura de software que evolui o app Django para uma stack compatível com EC2 + Docker Compose + PostgreSQL, com dados relacionais e semiestruturados.
 
-Projeto acadêmico da disciplina de Big Data e Cloud Computing.
+## Links
+- API publicada: `http://<IP-PUBLICO>:8000/api/`
+- Site MkDocs: `https://projetos-de-extensao.github.io/PC_CDIA_26.2_8001_III/`
+- Repositório: `https://github.com/Projetos-de-Extensao/PC_CDIA_26.2_8001_III`
 
-## URL pública
+## Arquitetura da solução
 
-**Aplicação no AWS:** [health check](http://zuumpay0.us-east-2.elasticbeanstalk.com/).
-
-**API oficial:** [abrir a raiz da API](http://zuumpay0.us-east-2.elasticbeanstalk.com/api/).
-
-**Console AWS:** [abrir o Elastic Beanstalk na região `us-east-2`](https://us-east-2.console.aws.amazon.com/elasticbeanstalk/home?region=us-east-2#/applications?applicationName=zuumpay-api).
-
-**API local:** [abrir a raiz da API](http://127.0.0.1:8000/api/) após iniciar o servidor local.
-
-O endpoint `/` responde com `{"status": "ok"}` e funciona como health check. A raiz `/api/` lista as coleções disponíveis.
-
-**Documentação MkDocs:** [abrir site publicado](https://projetos-de-extensao.github.io/PC_CDIA_26.2_8001_III/). Build e deploy confirmados pelo GitHub Actions.
-
-> A API exige autenticação. Use credenciais de um usuário Django; não exponha credenciais administrativas em clientes públicos.
-
-### Endpoints da API
-
-As coleções permitem `GET` (lista) e `POST` (criação). Lojistas têm operações de leitura, atualização e exclusão no detalhe. Transações começam como pendentes; o status só muda pelas ações de fluxo abaixo:
-
-| Recurso | Coleção | Detalhe |
-|---|---|---|
-| Lojistas | `/api/lojistas/` | `/api/lojistas/<id>/` |
-| Transações simuladas | `/api/transacoes/` | `/api/transacoes/<id>/` |
-
-### Usar a API publicada
-
-As coleções exigem autenticação. Para listar os lojistas no ambiente AWS, use as credenciais de um usuário Django:
-
-```powershell
-curl.exe -u seu-usuario:sua-senha http://zuumpay0.us-east-2.elasticbeanstalk.com/api/lojistas/
+```mermaid
+flowchart LR
+    Client[Cliente/API] --> Web[Django REST Framework\nweb:8000]
+    Web -->|SQL| DB[(PostgreSQL\ncontainer db)]
+    Web --> Admin[Admin Django]
+    Web --> JSON[Model JSONField\nProdutos e atributos flexíveis]
 ```
 
-Sem autenticação, `/api/lojistas/` e `/api/transacoes/` devem responder HTTP 401. A raiz `/api/` e o health check `/` podem ser usados para verificar se o serviço está disponível.
+## Visão do projeto
+A aplicação expõe um domínio de pagamentos com lojistas, lojas, categorias, produtos e transações. O modelo documental usa um `JSONField` em `Produto.atributos` e um índice GIN para consulta por atributos semiestruturados; o fluxo de transações grava dados em múltiplas tabelas em uma única transação atômica.
 
-### Fluxo de transações simuladas
+## Stack
+- Python 3.12
+- Django 6.0.4
+- Django REST Framework 3.17.1
+- PostgreSQL 16
+- Docker + Docker Compose
+- MkDocs + Material
 
-1. Crie a transação com um lojista existente, valor maior que zero e chave Pix fictícia. O status inicial é `PENDENTE`; datas e status são controlados pelo servidor.
-2. Finalize uma transação pendente enviando `POST` para `/api/transacoes/<id>/aprovar/` ou `/api/transacoes/<id>/cancelar/`.
-3. A resposta inclui o status final (`PAGO` ou `CANCELADO`) e `finalizado_em`. Uma transação já finalizada não pode ser finalizada de novo; a API responde HTTP 409.
+## Execução local
 
-Exemplo local com autenticação básica:
+1. Crie e ative o ambiente virtual:
 
 ```powershell
-curl.exe -u seu-usuario:sua-senha -X POST http://127.0.0.1:8000/api/transacoes/1/aprovar/
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 ```
 
-Esse fluxo é apenas uma simulação acadêmica: não movimenta dinheiro, não valida a chave junto a uma instituição financeira e não deve receber dados reais de pagamento.
-
-Exemplo de listagem autenticada local:
+2. Instale dependências do projeto:
 
 ```powershell
-$credenciais = "seu-usuario:sua-senha"
-curl.exe -u $credenciais http://127.0.0.1:8000/api/lojistas/
-```
-
-`Transacao.lojista` recebe o ID de um lojista existente. Use somente valores simulados; a API não processa pagamentos reais nem deve receber dados de cartão.
-
-## Executar localmente
-
-Requisitos: Python 3.12 ou superior e acesso à internet para instalar as dependências.
-
-No PowerShell, execute a partir da raiz do repositório:
-
-```powershell
+python -m pip install --upgrade pip
 python -m pip install -r .\scr\DeployEB\requirements.txt
-python .\scr\DeployEB\manage.py migrate
-python .\scr\DeployEB\manage.py runserver
 ```
 
-A aplicação fica disponível em `http://127.0.0.1:8000/`; o health check retorna `{"status": "ok"}`. O servidor local usa configurações de desenvolvimento automaticamente. Para entrar no Admin e testar os endpoints protegidos, execute `python .\scr\DeployEB\manage.py createsuperuser` uma vez. Não use a configuração de desenvolvimento em produção.
-
-### Verificar localmente
-
-Em outro terminal, a partir da raiz do repositório, valide a configuração e execute os testes automatizados:
+3. Configure as variáveis de ambiente:
 
 ```powershell
-python .\scr\DeployEB\manage.py check
-python .\scr\DeployEB\manage.py makemigrations --check --dry-run
-python .\scr\DeployEB\manage.py test pagamentos
+Copy-Item .\scr\DeployEB\.env.example .\scr\DeployEB\.env
 ```
 
-O estado esperado é `System check identified no issues`, `No changes detected` e todos os testes aprovados. O endpoint `/admin/` redireciona visitantes não autenticados à página de login; isso é esperado. O endpoint de dados `/api/lojistas/` retorna HTTP 401 sem autenticação.
+Edite o arquivo `.env` com chaves reais, incluindo `DJANGO_SECRET_KEY` e as credenciais PostgreSQL.
 
-## Empacotar e publicar no AWS Elastic Beanstalk
-
-### Pré-requisitos
-
-- Uma conta AWS com permissões para Elastic Beanstalk e os recursos necessários ao ambiente.
-- AWS CLI e EB CLI instalados e configurados.
-- A configuração atual em `scr/DeployEB/.elasticbeanstalk/config.yml` seleciona o perfil `eb-cli`, a região Ohio (`us-east-2`), a aplicação `zuumpay-api` e a plataforma Python 3.12. Confirme esses valores e o ambiente Elastic Beanstalk antes de publicar; eles podem precisar ser ajustados para a conta AWS de destino.
-- Defina a variável `DJANGO_SECRET_KEY` nas propriedades de ambiente do Elastic Beanstalk. Gere uma chave nova e mantenha-a fora do repositório. Defina também `DJANGO_ALLOWED_HOSTS` com o CNAME do ambiente, por exemplo `meu-ambiente.us-east-2.elasticbeanstalk.com`. `DJANGO_DEBUG` já é configurado como `False` em `.ebextensions/django.config`.
-- Configure HTTPS no balanceador/proxy do ambiente antes de definir `DJANGO_SECURE_SSL=True`; isso ativa o redirecionamento HTTPS e cookies seguros. Defina `DJANGO_HSTS_SECONDS` somente após confirmar que todo o domínio será servido por HTTPS.
-
-Configure as credenciais AWS para o perfil `eb-cli` sem adicioná-las ao código ou aos arquivos versionados:
-
-```powershell
-aws configure --profile eb-cli
-```
-
-### Deploy
-
-Execute os comandos a partir de `scr/DeployEB`:
+4. Execute as migrações e carregue os dados de exemplo:
 
 ```powershell
 cd .\scr\DeployEB
-python package_eb.py
-eb status
-eb deploy <nome-do-ambiente>
-eb status <nome-do-ambiente>
+python manage.py migrate
+python manage.py seed_demo
+python manage.py createsuperuser
+python manage.py runserver 0.0.0.0:8000
 ```
 
-O empacotador cria `app.zip`, conforme configurado no EB CLI. Ele inclui os arquivos ocultos `.ebextensions` necessários à configuração e às migrações e exclui o banco SQLite local, arquivos de mídia, ambientes virtuais e caches. As migrações e a coleta de arquivos estáticos são executadas durante o deploy.
+A API está disponível em `http://127.0.0.1:8000/api/`.
 
-Se ainda não existir um ambiente, `eb create <nome-do-ambiente>` cria recursos AWS e pode gerar custos. Revise a configuração e os custos na conta antes de executar esse comando. Depois do deploy, copie o CNAME exibido por `eb status` para a seção **URL pública** acima e teste `http://<CNAME>/`. Use `https://` somente se TLS estiver configurado no ambiente.
+## Execução com Docker Compose
 
-Depois de conectar-se à instância com `eb ssh <nome-do-ambiente>`, crie o superusuário dentro da instância:
+```powershell
+cd .\scr\DeployEB
+Copy-Item .env.example .env
+docker compose up -d --build
+```
+
+Verifique a saúde do serviço com:
+
+```powershell
+docker compose ps
+docker compose logs -f web
+docker compose logs -f db
+```
+
+## Deploy na EC2
+
+Fluxo recomendado:
+
+1. Instale Git, Docker e Docker Compose na instância EC2.
+2. Configure o Security Group liberando apenas SSH (22) e a porta da API (80 ou 8000).
+3. Faça clone do repositório e copie `.env.example` para `.env` com os segredos reais.
+4. Rode:
 
 ```bash
-cd /var/app/current
-python manage.py createsuperuser
+git pull
+cd /home/ec2-user/PC_CDIA_26.2_8001_III/scr/DeployEB
+docker compose up -d --build
 ```
 
-Use o usuário criado para entrar em `http://<CNAME>/admin/`. Confirme os endpoints `/`, `/api/`, `/api/lojistas/` e `/api/transacoes/`; sem autenticação, as coleções devem responder HTTP 401. Adicione ao README o CNAME real somente depois de verificar que o ambiente está saudável.
+5. Execute migrações e a criação do superusuário no container, se necessário:
 
-### Observações sobre produção
+```bash
+docker compose exec web python manage.py migrate
+docker compose exec web python manage.py createsuperuser
+```
 
-- A aplicação usa SQLite por padrão. O armazenamento local do Elastic Beanstalk não é compartilhado entre instâncias e não oferece persistência adequada para produção; para dados reais, configure um banco gerenciado, como Amazon RDS, antes de escalar ou tratar transações reais.
-- O `check --deploy` alerta quando HSTS e HTTPS ainda não estão configurados. Configure HTTPS no ambiente antes de ativar essas opções; habilitar redirecionamento HTTPS sem um listener TLS pode deixar o serviço inacessível.
-- Arquivos de mídia também não devem depender do disco local do ambiente; use armazenamento persistente, como Amazon S3, se a aplicação passar a recebê-los.
-- A chave Django anteriormente escrita no código foi removida da configuração. Como ela já esteve versionada, use uma chave nova no ambiente AWS; removê-la do código atual não apaga seu histórico Git.
+## Endpoints principais
+- `GET /api/` — informações gerais da API
+- `GET /api/lojistas/` — lista lojistas
+- `GET /api/lojas/` — lista lojas
+- `GET /api/categorias/` — lista categorias
+- `GET /api/produtos/` — lista produtos, com filtro por JSON via `?atributos__chave=tipo&atributos__valor=sensor`. No PostgreSQL, o filtro usa containment JSONB (`@>`) no banco e o índice GIN de `Produto.atributos`, antes da paginação. Valores escalares podem ser enviados como JSON (`true`, `false`, `12`, `"sensor"`); texto sem aspas também é tratado como string.
+- `GET /api/transacoes/` — lista transações
+- `POST /api/transacoes/<id>/aprovar/` — aprova transação pendente
+- `POST /api/transacoes/<id>/cancelar/` — cancela transação pendente
+- `GET /admin/` — administração do Django
+
+## Evidências de persistência e deploy
+- `docker compose ps` deve listar os serviços `web` e `db` em execução.
+- `docker compose logs` deve indicar a aplicação em execução e a conexão com PostgreSQL.
+- A API deve responder com status HTTP 200 em `/api/` e a interface administrativa em `/admin/`.
+- Reiniciar os containers e verificar que os dados continuam persistidos no volume Docker do PostgreSQL é o requisito de persistência do projeto.
+
+## Documentação
+A documentação da fase de iniciação e elaboração está em `docs/` e publicada pelo MkDocs em GitHub Pages.
+
+## Requisitos atendidos
+- A1: app e projeto em contexto de pagamentos e cloud
+- A2: 4+ models relacionais com ForeignKey e ManyToMany
+- A3: `Produto.atributos` com JSONField e GIN index
+- A4: transação em `transaction.atomic()` com rollback
+- A5: CRUD DRF, filtros JSON e endpoints
+- A6: Admin Django funcional
+- A7: variáveis de ambiente e `.env`
+- A8: seed de dados demo
+- B2/B3/B4/B5/B6/B7/B8: arquitetura e deploy descritos para Docker + Postgres + EC2

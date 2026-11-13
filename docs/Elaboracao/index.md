@@ -1,13 +1,14 @@
-# Elaboração — RUP/UP
+﻿# Elaboração
 
-No **RUP/UP** (*Rational Unified Process / Unified Process*), a **Elaboração** é a segunda fase do ciclo de vida do projeto. Seu objetivo é reduzir os principais riscos técnicos e de arquitetura antes da construção em larga escala.
+A fase de elaboração consolida a arquitetura e os requisitos prioritários do ZuumPay. O foco é validar a solução antes da etapa de construção e confirmar que a stack escolhida atende ao domínio, às regras de negócio e às exigências de implantabilidade.
 
-Durante essa fase, a equipe:
+## Objetivos
+- validar o modelo de domínio e os relacionamentos
+- confirmar a conversão em API REST
+- planejar a persistência e o deploy
+- revisar segurança, operação e persistência
 
-- detalha os requisitos e os casos de uso prioritários;
-- define e valida uma arquitetura executável;
-- implementa protótipos ou incrementos arquiteturalmente relevantes;
-- identifica e trata riscos críticos;
-- atualiza estimativas, plano do projeto e critérios de aceitação.
-
-Ao final da Elaboração, espera-se que a arquitetura esteja estabilizada e que o projeto tenha condições de avançar para a fase de **Construção** com riscos controlados.
+## Artefatos principais
+- [Casos de Uso Arquiteturais](cua.md)
+- [Documento de Visão](../Iniciacao/dv.md)
+- [Requisitos Suplementares](../Iniciacao/rs.md)

@@ -1,4 +1,8 @@
+from decimal import Decimal
+
+from django.contrib.postgres.indexes import GinIndex
 from django.db import models
+
 
 class Lojista(models.Model):
     nome_fantasia = models.CharField(max_length=150, verbose_name="Nome Fantasia")
@@ -15,6 +19,78 @@ class Lojista(models.Model):
         verbose_name_plural = "Lojistas"
 
 
+class Loja(models.Model):
+    lojista = models.ForeignKey(
+        Lojista,
+        on_delete=models.CASCADE,
+        related_name='lojas',
+        verbose_name="Lojista",
+    )
+    nome = models.CharField(max_length=150, verbose_name="Nome da Loja")
+    cidade = models.CharField(max_length=100, default='São Paulo', verbose_name="Cidade")
+    ativo = models.BooleanField(default=True, verbose_name="Loja ativa")
+    criado_em = models.DateTimeField(auto_now_add=True, verbose_name="Data de Cadastro")
+
+    def __str__(self):
+        return f"{self.nome} ({self.lojista.nome_fantasia})"
+
+    class Meta:
+        verbose_name = "Loja"
+        verbose_name_plural = "Lojas"
+        ordering = ['nome']
+
+
+class Categoria(models.Model):
+    nome = models.CharField(max_length=100, unique=True, verbose_name="Categoria")
+    descricao = models.TextField(blank=True, default='', verbose_name="Descrição")
+
+    def __str__(self):
+        return self.nome
+
+    class Meta:
+        verbose_name = "Categoria"
+        verbose_name_plural = "Categorias"
+        ordering = ['nome']
+
+
+class Produto(models.Model):
+    lojista = models.ForeignKey(
+        Lojista,
+        on_delete=models.CASCADE,
+        related_name='produtos',
+        verbose_name="Lojista",
+    )
+    nome = models.CharField(max_length=150, verbose_name="Nome do Produto")
+    descricao = models.TextField(blank=True, default='', verbose_name="Descrição")
+    preco = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço")
+    estoque = models.PositiveIntegerField(default=0, verbose_name="Estoque")
+    atributos = models.JSONField(default=dict, blank=True, verbose_name="Atributos do produto")
+    categorias = models.ManyToManyField(Categoria, blank=True, related_name='produtos')
+    criado_em = models.DateTimeField(auto_now_add=True, verbose_name="Data de Cadastro")
+    atualizado_em = models.DateTimeField(auto_now=True, verbose_name="Última Atualização")
+
+    def __str__(self):
+        return f"{self.nome} - {self.lojista.nome_fantasia}"
+
+    class Meta:
+        verbose_name = "Produto"
+        verbose_name_plural = "Produtos"
+        ordering = ['-criado_em']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(preco__gt=0),
+                name='produto_preco_positivo',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(estoque__gte=0),
+                name='produto_estoque_nao_negativo',
+            ),
+        ]
+        indexes = [
+            GinIndex(fields=['atributos'], name='produto_atributos_gin'),
+        ]
+
+
 class Transacao(models.Model):
     STATUS_PENDENTE = 'PENDENTE'
     STATUS_PAGO = 'PAGO'
@@ -26,10 +102,29 @@ class Transacao(models.Model):
         (STATUS_CANCELADO, 'Cancelado'),
     ]
 
-    lojista = models.ForeignKey(Lojista, on_delete=models.CASCADE, related_name='transacoes', verbose_name="Lojista")
+    lojista = models.ForeignKey(
+        Lojista,
+        on_delete=models.CASCADE,
+        related_name='transacoes',
+        verbose_name="Lojista",
+    )
+    loja = models.ForeignKey(
+        Loja,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transacoes',
+        verbose_name="Loja",
+    )
     valor = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor (R$)")
     chave_pix = models.CharField(max_length=255, verbose_name="Chave Pix de Destino")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDENTE, verbose_name="Status da Transação")
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDENTE,
+        verbose_name="Status da Transação",
+    )
+    observacoes = models.TextField(blank=True, default='', verbose_name="Observações")
     criado_em = models.DateTimeField(auto_now_add=True, verbose_name="Data/Hora")
     finalizado_em = models.DateTimeField(null=True, blank=True, verbose_name="Data/Hora de Finalização")
 
@@ -43,5 +138,43 @@ class Transacao(models.Model):
             models.CheckConstraint(
                 condition=models.Q(valor__gt=0),
                 name='transacao_valor_positivo',
+            ),
+        ]
+
+
+class ItemTransacao(models.Model):
+    transacao = models.ForeignKey(
+        Transacao,
+        on_delete=models.CASCADE,
+        related_name='itens',
+        verbose_name="Transação",
+    )
+    produto = models.ForeignKey(
+        Produto,
+        on_delete=models.PROTECT,
+        related_name='itens_transacao',
+        verbose_name="Produto",
+    )
+    quantidade = models.PositiveIntegerField(default=1, verbose_name="Quantidade")
+    preco_unitario = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Preço Unitário")
+
+    @property
+    def total(self):
+        return Decimal(str(self.quantidade)) * self.preco_unitario
+
+    def __str__(self):
+        return f"{self.produto.nome} x {self.quantidade}"
+
+    class Meta:
+        verbose_name = "Item da Transação"
+        verbose_name_plural = "Itens da Transação"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantidade__gt=0),
+                name='item_quantidade_positiva',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(preco_unitario__gt=0),
+                name='item_preco_unitario_positivo',
             ),
         ]

@@ -4,17 +4,18 @@ site_author: Equipe ZuumPay
 site_name: ZuumPay — Projeto de Cloud
 copyright: Copyright ©️ 2026, Jonh Carvalho
 
-nav: 
+nav:
   - Home: index.md
-  - Iniciação: 
+  - Iniciação:
     - Index: Iniciacao/index.md
-    - Documento de Visão Preenchido: Iniciacao/dv.md
+    - Documento de Visão: Iniciacao/dv.md
     - Requisitos Suplementares: Iniciacao/rs.md
-  - Elaboração: 
+  - Elaboração:
     - Index: Elaboracao/index.md
     - Casos de Uso Arquiteturais: Elaboracao/cua.md
   - Construção:
     - Index: Construcao/index.md
+    - Atividades de Deploy: Construcao/ativ_deploy.md
 
 extra_css:
   - css/extra.css

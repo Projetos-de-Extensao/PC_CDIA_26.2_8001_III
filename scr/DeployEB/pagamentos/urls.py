@@ -2,7 +2,14 @@ from django.http import JsonResponse
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import LojistaViewSet, TransacaoViewSet
+from .views import (
+    CategoriaViewSet,
+    ItemTransacaoViewSet,
+    LojaViewSet,
+    LojistaViewSet,
+    ProdutoViewSet,
+    TransacaoViewSet,
+)
 
 app_name = 'pagamentos'
 
@@ -13,7 +20,11 @@ def api_root(_request):
         'mensagem': 'Bem-vindo à API do ZuumPay!',
         'endpoints': {
             'lojistas': '/api/lojistas/',
+            'lojas': '/api/lojas/',
+            'categorias': '/api/categorias/',
+            'produtos': '/api/produtos/',
             'transacoes': '/api/transacoes/',
+            'itens_transacao': '/api/itens-transacao/',
             'aprovar_transacao': '/api/transacoes/<id>/aprovar/',
             'cancelar_transacao': '/api/transacoes/<id>/cancelar/',
             'admin': '/admin/',
@@ -23,7 +34,11 @@ def api_root(_request):
 
 router = DefaultRouter()
 router.register('lojistas', LojistaViewSet, basename='lojista')
+router.register('lojas', LojaViewSet, basename='loja')
+router.register('categorias', CategoriaViewSet, basename='categoria')
+router.register('produtos', ProdutoViewSet, basename='produto')
 router.register('transacoes', TransacaoViewSet, basename='transacao')
+router.register('itens-transacao', ItemTransacaoViewSet, basename='item-transacao')
 
 urlpatterns = [
     path('', api_root, name='api-root'),
