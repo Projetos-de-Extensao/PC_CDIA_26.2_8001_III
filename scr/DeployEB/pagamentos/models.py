@@ -91,6 +91,14 @@ class Produto(models.Model):
         ]
 
 
+class ItemCatalogo(Produto):
+    class Meta:
+        proxy = True
+        verbose_name = "Item do Catálogo"
+        verbose_name_plural = "Itens do Catálogo"
+        ordering = ['-criado_em']
+
+
 class Transacao(models.Model):
     STATUS_PENDENTE = 'PENDENTE'
     STATUS_PAGO = 'PAGO'

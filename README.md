@@ -107,7 +107,7 @@ docker compose exec web python manage.py createsuperuser
 - `GET /api/lojistas/` — lista lojistas
 - `GET /api/lojas/` — lista lojas
 - `GET /api/categorias/` — lista categorias
-- `GET /api/produtos/` — lista produtos, com filtro por JSON via `?atributos__chave=tipo&atributos__valor=sensor`. No PostgreSQL, o filtro usa containment JSONB (`@>`) no banco e o índice GIN de `Produto.atributos`, antes da paginação. Valores escalares podem ser enviados como JSON (`true`, `false`, `12`, `"sensor"`); texto sem aspas também é tratado como string.
+- `GET /api/produtos/` ou `GET /api/catalogo/` — lista itens do catálogo, com filtro por JSON via `?atributos__chave=tipo&atributos__valor=sensor`. No PostgreSQL, o filtro usa containment JSONB (`@>`) no banco e o índice GIN de `Produto.atributos`, antes da paginação. Valores escalares podem ser enviados como JSON (`true`, `false`, `12`, `"sensor"`); texto sem aspas também é tratado como string.
 - `GET /api/transacoes/` — lista transações
 - `POST /api/transacoes/<id>/aprovar/` — aprova transação pendente
 - `POST /api/transacoes/<id>/cancelar/` — cancela transação pendente

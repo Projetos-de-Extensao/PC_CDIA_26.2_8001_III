@@ -23,6 +23,7 @@ def api_root(_request):
             'lojas': '/api/lojas/',
             'categorias': '/api/categorias/',
             'produtos': '/api/produtos/',
+            'catalogo': '/api/catalogo/',
             'transacoes': '/api/transacoes/',
             'itens_transacao': '/api/itens-transacao/',
             'aprovar_transacao': '/api/transacoes/<id>/aprovar/',
@@ -37,6 +38,7 @@ router.register('lojistas', LojistaViewSet, basename='lojista')
 router.register('lojas', LojaViewSet, basename='loja')
 router.register('categorias', CategoriaViewSet, basename='categoria')
 router.register('produtos', ProdutoViewSet, basename='produto')
+router.register('catalogo', ProdutoViewSet, basename='catalogo')
 router.register('transacoes', TransacaoViewSet, basename='transacao')
 router.register('itens-transacao', ItemTransacaoViewSet, basename='item-transacao')
 

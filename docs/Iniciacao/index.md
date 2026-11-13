@@ -5,7 +5,7 @@
 ## Principais atividades
 
 - Definição do escopo do projeto de cloud e arquitetura da fintech.
-- Visão geral da solução baseada em Django REST Framework, PostgreSQL e AWS Elastic Beanstalk.
+- Visão geral da solução baseada em Django REST Framework, PostgreSQL e AWS EC2 com Docker Compose.
 - Análise de viabilidade financeira e técnica.
 - Identificação de riscos iniciais voltados a transações simuladas e conformidade.
 - Identificação dos principais requisitos funcionais e não funcionais.
