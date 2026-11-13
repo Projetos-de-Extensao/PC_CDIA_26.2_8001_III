@@ -39,6 +39,7 @@ class PagamentosApiTests(TestCase):
         self.assertEqual(data['status'], 'sucesso')
         self.assertIn('lojistas', data['endpoints'])
         self.assertIn('transacoes', data['endpoints'])
+        self.assertIn('catalogo', data['endpoints'])
         self.assertIn('aprovar_transacao', data['endpoints'])
         self.assertIn('cancelar_transacao', data['endpoints'])
 
@@ -229,6 +230,21 @@ class PagamentosApiTests(TestCase):
             reverse('pagamentos:produto-list'),
             {'atributos__chave': 'tipo', 'atributos__valor': 'sensor'},
         )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['id'], produto.id)
+
+    def test_catalogo_endpoint_lists_products(self):
+        self.client.force_authenticate(user=self.user)
+        produto = Produto.objects.create(
+            lojista=self.lojista,
+            nome='Produto de Catálogo',
+            preco=Decimal('12.50'),
+            atributos={'tipo': 'demo'},
+        )
+
+        response = self.client.get(reverse('pagamentos:catalogo-list'))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 1)

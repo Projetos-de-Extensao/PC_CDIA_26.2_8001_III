@@ -95,10 +95,9 @@ cd /home/ec2-user/PC_CDIA_26.2_8001_III/scr/DeployEB
 docker compose up -d --build
 ```
 
-5. Execute migrações e a criação do superusuário no container, se necessário:
+5. O `docker compose up -d --build` executa automaticamente as migrações e `collectstatic` antes de iniciar Gunicorn. Crie o superusuário apenas se ainda não existir:
 
 ```bash
-docker compose exec web python manage.py migrate
 docker compose exec web python manage.py createsuperuser
 ```
 
@@ -117,7 +116,14 @@ docker compose exec web python manage.py createsuperuser
 - `docker compose ps` deve listar os serviços `web` e `db` em execução.
 - `docker compose logs` deve indicar a aplicação em execução e a conexão com PostgreSQL.
 - A API deve responder com status HTTP 200 em `/api/` e a interface administrativa em `/admin/`.
+- Para registrar evidência do PostgreSQL na EC2, execute e capture a saída real:
+
+```bash
+docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT id, nome, preco, atributos FROM pagamentos_produto ORDER BY id LIMIT 10;"'
+```
+
 - Reiniciar os containers e verificar que os dados continuam persistidos no volume Docker do PostgreSQL é o requisito de persistência do projeto.
+- As capturas de `docker compose ps`, logs, API e `psql` devem ser coletadas no ambiente implantado; não são evidências já incluídas no repositório.
 
 ## Documentação
 A documentação da fase de iniciação e elaboração está em `docs/` e publicada pelo MkDocs em GitHub Pages.
@@ -131,7 +137,8 @@ A documentação da fase de iniciação e elaboração está em `docs/` e public
 - A6: Admin Django funcional
 - A7: variáveis de ambiente e `.env`
 - A8: seed de dados demo
-- B2/B3/B4/B5/B6/B7/B8: arquitetura e deploy descritos para Docker + Postgres + EC2
+- B2/B3/B4/B5/B6/B7: arquitetura e deploy descritos para Docker + Postgres + EC2
+- B8: comandos para coletar evidências, incluindo consulta `psql`; as capturas reais ainda devem ser coletadas no ambiente implantado
 
 ## Deploy em Produção (AWS EC2 + Docker Compose + PostgreSQL)
 

@@ -19,7 +19,9 @@ nav:
     - Sequência de Comunicação: Elaboracao/seq_com.md
   - Construção:
     - Index: Construcao/index.md
-    - Atividades de Deploy: Construcao/ativ_deploy.md
+  - Transição:
+    - Index: Transicao/index.md
+    - Atividades de Deploy: Transicao/ativ_deploy.md
 
 extra_css:
   - css/extra.css

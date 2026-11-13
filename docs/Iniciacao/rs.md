@@ -50,7 +50,7 @@ Os identificadores abaixo são usados na [matriz de rastreamento](../Elaboracao/
 | RF-02 | A API permite operações CRUD para lojistas, lojas, categorias, produtos, transações e itens de transação. | Funcional |
 | RF-03 | Produtos aceitam atributos como objeto JSON e podem ser filtrados por chave/valor; PostgreSQL dispõe de índice GIN no campo. | Funcional / desempenho |
 | RF-04 | A criação de transação com itens valida lojista, quantidades e soma dos itens, com rollback se a operação falhar. | Funcional / integridade |
-| RF-05 | Só transações pendentes podem ser aprovadas ou canceladas; uma finalização concorrente ou repetida retorna HTTP 409. | Funcional |
+| RF-05 | Só transações com status `PENDENTE` podem ser finalizadas: a aprovação altera o status para `PAGO` e o cancelamento para `CANCELADO`; uma finalização concorrente ou repetida retorna HTTP 409. | Funcional |
 | RF-06 | O painel `/admin/` permite manutenção administrativa autenticada dos modelos registrados. | Funcional |
 | RF-07 | A raiz da API e o endpoint `/` fornecem respostas de verificação/descoberta documentadas. | Funcional / operação |
 | RNF-01 | O Compose inicia PostgreSQL e web, aguarda a saúde do banco, aplica migrações e mantém os dados em volume nomeado. | Confiabilidade |

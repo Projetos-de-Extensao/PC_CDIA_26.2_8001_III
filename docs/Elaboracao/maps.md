@@ -29,7 +29,7 @@ O cliente da API precisa autenticar-se nos viewsets; o endpoint raiz de descober
 | ID | Componente | Responsabilidade | Implementação |
 |---|---|---|---|
 | C-01 | Cliente/operador | Enviar chamadas autenticadas ou operar a instância | Cliente HTTP, SSH e Docker Compose |
-| C-02 | Roteamento e API REST | Publicar endpoints, autenticação e ações de recursos | `zuumpay_config/urls.py`, `pagamentos/urls.py`, viewsets |
+| C-02 | Roteamento e API REST | Publicar endpoints, autenticação e ações de recursos | `zuumpay_core/urls.py`, `pagamentos/urls.py`, viewsets |
 | C-03 | Serialização e regras | Validar payloads, persistir itens atomicamente e validar transições | `pagamentos/serializers.py`, `pagamentos/views.py` |
 | C-04 | Domínio e persistência | Mapear entidades e restrições, guardar JSON e dados relacionais | `pagamentos/models.py`, PostgreSQL |
 | C-05 | Administração | Expor manutenção autenticada dos modelos | `pagamentos/admin.py`, Django Admin |
@@ -62,4 +62,4 @@ Os requisitos RF/RNF são definidos em [Requisitos Suplementares](../Iniciacao/r
 
 ## 4. Histórico e aprovação
 
-Esta versão 1.0 foi preparada em 2026-11-13. Aprovação do orientador/avaliador: **pendente**. O histórico consolidado, incluindo os demais artefatos, está no [índice de Elaboração](index.md#historico-de-versoes-e-aprovacoes).
+Baseline 1.0 aprovada pela Equipe ZuumPay em 2026-11-13; aprovação do orientador/avaliador pendente. O histórico consolidado está no [índice de Elaboração](index.md#historico-de-versoes-e-aprovacoes).
